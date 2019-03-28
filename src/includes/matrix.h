@@ -7,12 +7,20 @@ typedef struct {
     double **coeff;
 } matrix_t;
 
+// PLU factorisation 
 typedef struct {
     int nb_perm;
     matrix_t *P;
     matrix_t *L;
     matrix_t *U;
 } plu_t;
+
+// Cholesky factorisation output
+typedef struct {
+    int nb_perm;
+    matrix_t *L;
+    matrix_t *D;
+} cholesky_t;
 
 // Matrix creation functions
 matrix_t *  matrix_create(int rows, int columns);
@@ -49,10 +57,14 @@ matrix_t *  matrix_solve_raw_f(const matrix_t *A, const matrix_t *B);           
 matrix_t *  matrix_com_f(const matrix_t *matrix);                                           // Return comatrix
 matrix_t *  matrix_comp_f(const matrix_t *matrix);                                          // Return complementary matrix
 
-// Highly optimized fast methods based upon PLU decomposition.
+// Highly optimized fast methods based upon PLU decomposition for square matrix.
 plu_t *     matrix_plu_f(const matrix_t *matrix);                                           // Return PLU decomposition of matrix
 double      matrix_det_plu_f(const matrix_t *matrix);                                       // Return |matrix| with PLU method
-matrix_t *  matrix_inverse_plu_f(const matrix_t *matrix);                                   // Return matrix^-1 computed with PLU method
 matrix_t *  matrix_solve_plu_f(const matrix_t *A, const matrix_t *B);                       // Resolve AX=B with PLU method. Return X
+matrix_t *  matrix_inverse_plu_f(const matrix_t *matrix);                                   // Return matrix^-1 computed with PLU method
 
+// Highly optimized fast methods based upon Cholesky decomposition for square symetric matrix.
+matrix_t * matrix_cholesky_f(const matrix_t *matrix);                                       // Return L with A=L*transp(L) using Cholesky factorisation
+matrix_t * matrix_solve_cholesky_f(const matrix_t *A, const matrix_t *B);                   // Resolve AX=B with Cholesky method. Return X
+matrix_t * matrix_inverse_cholesky_f(const matrix_t *matrix);                               // Return matrix^-1 computed with Cholesky method
 #endif

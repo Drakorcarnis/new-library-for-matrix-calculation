@@ -5,7 +5,6 @@
 #include <errno.h>
 #include "includes/matrix.h"
 
-// Static functions
 static int sanity_check(const void *pointer, const char *function_name)
 {
     if(!pointer)
@@ -22,6 +21,20 @@ static int square_check(const matrix_t *matrix, const char *function_name)
     {
         fprintf(stderr, "%s: not square matrix\n",function_name);
         return 0;
+    }
+    return 1;
+}
+
+static int symetry_check(const matrix_t *matrix, const char *function_name)
+{
+    for (int i = 0; i < matrix->rows; i++) {
+        for (int j = 0; j < i; j++) {
+            if(matrix->coeff[i][j] != matrix->coeff[j][i])
+            {
+                fprintf(stderr, "%s: not symetric matrix\n",function_name);
+                return 0;
+            }
+        }
     }
     return 1;
 }
@@ -166,7 +179,8 @@ void matrix_free(matrix_t *matrix)
         free(matrix->coeff[i]);
     }
     free(matrix->coeff);
-    free(matrix);   
+    free(matrix); 
+    matrix = NULL;
 }
 
 void plu_free(plu_t *plu)
@@ -264,18 +278,17 @@ matrix_t * matrix_pow_f(const matrix_t *matrix, int pow)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;  
     if(!square_check(matrix, __func__))return NULL; 
-    int i, j, k;
     matrix_t *pow_matrix = matrix_create(matrix->rows, matrix->columns);
     matrix_t *tmp_matrix;
-    for (j = 0; j < pow_matrix->rows; j++) {
-        for (k = 0; k < pow_matrix->columns; k++) {
+    for (int j = 0; j < pow_matrix->rows; j++) {
+        for (int k = 0; k < pow_matrix->columns; k++) {
             pow_matrix->coeff[j][k] = matrix->coeff[j][k];
         }
     }
-    for (i = 0; i < pow-1; i++) {
+    for (int i = 0; i < pow-1; i++) {
         tmp_matrix = matrix_mult_f(pow_matrix, pow_matrix);
-        for (j = 0; j < pow_matrix->rows; j++) {
-            for (k = 0; k < pow_matrix->columns; k++) {
+        for (int j = 0; j < pow_matrix->rows; j++) {
+            for (int k = 0; k < pow_matrix->columns; k++) {
                 pow_matrix->coeff[j][k] = tmp_matrix->coeff[j][k];
             }
         }
@@ -287,12 +300,12 @@ matrix_t * matrix_pow_f(const matrix_t *matrix, int pow)
 matrix_t * matrix_shrink_f(const matrix_t *matrix, int skipped_row, int skipped_column)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
-    int i, j, k, l=0;
+    int l = 0;
     matrix_t *shrink_matrix = matrix_create(matrix->rows-1, matrix->columns-1);
-    for (i = 0; i < shrink_matrix->rows; i++) {
+    for (int i = 0; i < shrink_matrix->rows; i++) {
         if (l == skipped_row) l++;
-        k=0;
-        for (j = 0; j < shrink_matrix->columns; j++) {
+        int k=0;
+        for (int j = 0; j < shrink_matrix->columns; j++) {
             if (k == skipped_column) k++;
             shrink_matrix->coeff[i][j]=matrix->coeff[l][k++];
         }
@@ -342,14 +355,13 @@ matrix_t * matrix_solve_diag_sup(const matrix_t *A, const matrix_t *B)
 // Methods based upon raw determinant calculation. For fun only. Do never use them, cuz you've NO reason to use them. Really.
 double matrix_det_raw_f(const matrix_t *matrix)
 {
-    int i;
     double det = 0;
     double sign = 0;
     matrix_t *shrinked_matrix = NULL;
     if(!sanity_check((void *)matrix, __func__))return 0;
     if(matrix->columns != matrix->rows) return 0;
     if(matrix->columns == 1)return matrix->coeff[0][0];
-    for (i = 0; i < matrix->columns; i++) 
+    for (int i = 0; i < matrix->columns; i++) 
     {
         shrinked_matrix=matrix_shrink_f(matrix, 0, i);
         sign = (int)pow(-1.0,(double)i);
@@ -390,13 +402,12 @@ matrix_t * matrix_com_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     if(!square_check(matrix, __func__))return NULL; 
-    int i, j;
     double sign = 0;
     matrix_t *shrinked_matrix = NULL;
     matrix_t *co_matrix = matrix_create(matrix->rows, matrix->columns);
-    for (i = 0; i < co_matrix->rows; i++)
+    for (int i = 0; i < co_matrix->rows; i++)
     {
-        for (j = 0; j < co_matrix->columns; j++)
+        for (int j = 0; j < co_matrix->columns; j++)
         {
             shrinked_matrix=matrix_shrink_f(matrix, i, j);
             sign = (int)pow(-1.0,(double)(i+j));
@@ -484,16 +495,6 @@ double matrix_det_plu_f(const matrix_t *matrix)
     plu_free(plu);
     return det;
 }
-   
-matrix_t * matrix_inverse_plu_f(const matrix_t *matrix)
-{
-    if(!sanity_check((void *)matrix, __func__))return NULL;
-    if(!square_check(matrix, __func__))return NULL; 
-    matrix_t *I = matrix_identity(matrix->rows);
-    matrix_t *matrix_inverse = matrix_solve_plu_f(matrix, I);
-    matrix_free(I);
-    return(matrix_inverse);
-}  
   
 matrix_t * matrix_solve_plu_f(const matrix_t *A, const matrix_t *B)
 {
@@ -507,4 +508,63 @@ matrix_t * matrix_solve_plu_f(const matrix_t *A, const matrix_t *B)
     matrix_free(X);
     matrix_free(Z);
     return(ret);
+} 
+
+matrix_t * matrix_inverse_plu_f(const matrix_t *matrix)
+{
+    if(!sanity_check((void *)matrix, __func__))return NULL;
+    if(!square_check(matrix, __func__))return NULL; 
+    matrix_t *I = matrix_identity(matrix->rows);
+    matrix_t *matrix_inverse = matrix_solve_plu_f(matrix, I);
+    matrix_free(I);
+    return(matrix_inverse);
+} 
+
+matrix_t * matrix_cholesky_f(const matrix_t *matrix)
+{
+    if(!sanity_check((void *)matrix, __func__))return NULL;
+    if(!square_check(matrix, __func__))return NULL;
+    if(!symetry_check(matrix, __func__))return NULL;
+    int n = matrix->rows;
+    double sum;
+    matrix_t *L = matrix_create(n, n); 
+    for (int i = 0; i < n; i++)
+    {
+        sum = 0;
+        for (int k = 0; k < i; k++)sum += L->coeff[i][k] * L->coeff[i][k];
+        L->coeff[i][i] = sqrt(matrix->coeff[i][i] - sum);
+        for (int j = i+1; j < n; j++)
+        {
+            sum = 0;
+            for (int k = 0; k < i; k++)sum += L->coeff[i][k] * L->coeff[j][k];
+            L->coeff[j][i] = (matrix->coeff[i][j] - sum)/L->coeff[i][i];
+        }
+    }
+    return(L);  
+} 
+ 
+matrix_t * matrix_solve_cholesky_f(const matrix_t *A, const matrix_t *B)
+{
+    if(!sanity_check((void *)A, __func__))return NULL;
+    if(!square_check(A, __func__))return NULL;
+    if(!symetry_check(A, __func__))return NULL;
+    matrix_t *L = matrix_cholesky_f(A);
+    matrix_t *LT = matrix_transp_f(L);
+    matrix_t *Z = matrix_solve_diag_inf(L, B);
+    matrix_t *X = matrix_solve_diag_sup(LT, Z);
+    matrix_free(L);
+    matrix_free(LT);
+    matrix_free(Z);
+    return(X);
 }
+
+matrix_t * matrix_inverse_cholesky_f(const matrix_t *matrix)
+{
+    if(!sanity_check((void *)matrix, __func__))return NULL;
+    if(!square_check(matrix, __func__))return NULL;
+    if(!symetry_check(matrix, __func__))return NULL;
+    matrix_t *I = matrix_identity(matrix->rows);
+    matrix_t *matrix_inverse = matrix_solve_cholesky_f(matrix, I);
+    matrix_free(I);
+    return(matrix_inverse);
+} 
