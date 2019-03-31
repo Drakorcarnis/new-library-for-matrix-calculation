@@ -50,7 +50,7 @@ int test_matrix_add_f(const matrix_t *matrix1, const matrix_t *matrix2)
     return(1);
 }
 
-int test_matrix_mult_scalar_f(const matrix_t *matrix, double lambda)
+int test_matrix_mult_scalar_f(const matrix_t *matrix, double complex lambda)
 {
     long long time = utime();
     matrix_t *mult_matrix = matrix_mult_scalar_f(matrix, lambda);
@@ -120,6 +120,20 @@ int test_matrix_solve_plu_f(matrix_t *matrix1, matrix_t *matrix2)
     return(1);
 }
 
+int test_matrix_solve_cholesky_f(matrix_t *matrix1, matrix_t *matrix2)
+{
+    long long time = utime();
+    matrix_t *matrix_cramer = matrix_solve_cholesky_f(matrix1, matrix2);
+    long long time2 = utime();
+    if(!matrix_cramer)return(0);
+    char *formatted_time = format_time(time2 - time, "µs");
+    printf("\n(%s)X =\n", formatted_time);
+    matrix_display(matrix_cramer);
+    matrix_free(matrix_cramer);
+    free(formatted_time);
+    return(1);
+}
+
 int test_matrix_plu_f(matrix_t *matrix)
 {
     long long time = utime();
@@ -146,7 +160,56 @@ int test_matrix_plu_f(matrix_t *matrix)
     free(formatted_time);
     return(1);
 }
+int test_matrix_cholesky_f(matrix_t *matrix)
+{
+    long long time = utime();
+    matrix_t *L = matrix_cholesky_f(matrix);
+    long long time2 = utime();
+    char *formatted_time = format_time(time2 - time, "µs");
+    if(!L)return(0);
+    printf("\nCholesky computed in %s\n", formatted_time);
+    printf("\nA =\n");
+    matrix_display(matrix);
+    printf("\nL =\n");
+    matrix_display(L);
+    printf("\nL*LT =\n");
+    matrix_t *LT = matrix_transp_f(L);
+    matrix_t *LLT = matrix_mult_f(L, LT);
+    matrix_display(LLT);
+    matrix_free(LT);
+    matrix_free(L);
+    free(formatted_time);
+    return(1);
+}
 
+int test_matrix_det_raw_f(matrix_t *matrix)
+{
+    long long time = utime();
+    double complex det = matrix_det_raw_f(matrix);
+    long long time2 = utime();
+    char *formatted_time = format_time(time2 - time, "µs");
+    printf("\n(%s)|M| = %g\n", formatted_time, creal(det));
+    return(1);
+}
+int test_matrix_det_plu_f(matrix_t *matrix)
+{
+    long long time = utime();
+    double complex det = matrix_det_plu_f(matrix);
+    long long time2 = utime();
+    char *formatted_time = format_time(time2 - time, "µs");
+    printf("\n(%s)|M| = %g\n", formatted_time, creal(det));
+    return(1);
+}
+int test_matrix_det_cholesky_f(matrix_t *matrix)
+{
+    long long time = utime();
+    double complex det = matrix_det_cholesky_f(matrix);
+    long long time2 = utime();
+    char *formatted_time = format_time(time2 - time, "µs");
+    printf("\n(%s)|M| = %g\n", formatted_time, creal(det));
+    return(1);
+}
+    
 int test_function_f(matrix_t*(*function)(const matrix_t*), matrix_t* matrix, char* txt)
 {
     long long time = utime();
@@ -163,9 +226,9 @@ int test_function_f(matrix_t*(*function)(const matrix_t*), matrix_t* matrix, cha
 
 int main() {
     // matrix_t *matrix_p = str2matrix(argc-1, &argv[1], ',');
-    matrix_t *matrix1 = file2matrix("/home/Drakorcarnis/new_library/src/matrix1.txt");
-    matrix_t *matrix2 = file2matrix("/home/Drakorcarnis/new_library/src/matrix2.txt");
-    matrix_t *matrix3 = file2matrix("/home/Drakorcarnis/new_library/src/matrix3.txt");
+    matrix_t *matrix1 = matrix_random(15,15);
+    matrix_t *matrix2 = matrix_symetric_random(15,15);
+    matrix_t *matrix3 = matrix_random(15,1);
     if(!matrix1)return(-1);
     if(!matrix2)return(-1);
     if(!matrix3)return(-1);
@@ -179,16 +242,23 @@ int main() {
     test_function_f(&matrix_transp_f,matrix1, "transp(M)");
     test_matrix_add_f(matrix1, matrix2);
     test_matrix_mult_scalar_f(matrix1, 0.5);
-    test_matrix_pow_f(matrix1, 10);
+    test_matrix_pow_f(matrix1, 3);
+    test_matrix_mult_f(matrix1, matrix2);
     // test_function_f(&matrix_det_raw_f,matrix1, "|M|");
     // test_function_f(&matrix_com_f,matrix1, "com(M)");
     // test_function_f(&matrix_comp_f,matrix1, "comp(M)");
     // test_function_f(&matrix_inverse_raw_f, matrix1, "1/M");
-    test_matrix_mult_f(matrix1, matrix2);
+    // test_matrix_det_raw_f(matrix2);
     test_matrix_solve_plu_f(matrix1, matrix3);
     test_matrix_plu_f(matrix1);
     // test_function_f(&matrix_det_plu_f,matrix1, "|M|");
     test_function_f(&matrix_inverse_plu_f,matrix1,"1/M");
+    test_matrix_solve_cholesky_f(matrix2, matrix3);
+    test_matrix_cholesky_f(matrix2);
+    test_function_f(&matrix_inverse_plu_f,matrix2,"1/M2");
+    test_function_f(&matrix_inverse_cholesky_f,matrix2,"1/M2");
+    test_matrix_det_plu_f(matrix2);
+    test_matrix_det_cholesky_f(matrix2);
     matrix_free(matrix1);
     matrix_free(matrix2);
     matrix_free(matrix3);

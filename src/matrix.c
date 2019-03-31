@@ -3,6 +3,8 @@
 #include <string.h>
 #include <math.h>
 #include <errno.h>
+#include <time.h>
+#include <complex.h>
 #include "includes/matrix.h"
 
 static int sanity_check(const void *pointer, const char *function_name)
@@ -39,28 +41,48 @@ static int symetry_check(const matrix_t *matrix, const char *function_name)
     return 1;
 }
 
-static double str2double(const char *str, int len)
+static double complex str2double(const char *str, int len)
 {
     char *s = calloc(len+1, sizeof(char));
     memcpy(s, str, len);
-    double ret = strtod(s,NULL);
+    double complex ret = strtod(s,NULL);
     free(s);
     return ret;
 }
 
 // Matrix creation functions
+
 matrix_t * matrix_create(int rows, int columns)
 {
-    int i,j;
     matrix_t *matrix = malloc(sizeof(matrix_t));
     matrix->rows = rows;
     matrix->columns = columns;
-    matrix->coeff = malloc(rows*sizeof(double *));
-    for (i = 0; i < rows; i++) {
-        matrix->coeff[i] = malloc(columns*sizeof(double));
-        if(!sanity_check((void *)matrix->coeff[i], __func__))return NULL;
-        for (j = 0; j < columns; j++) {
-            matrix->coeff[i][j] = 0;
+    matrix->coeff = malloc(rows*sizeof(double complex *));
+    for (int i = 0; i < rows; i++)matrix->coeff[i] = calloc(columns, sizeof(double complex));
+    return matrix;
+}
+
+matrix_t * matrix_random(int rows, int columns)
+{
+    matrix_t *matrix = matrix_create(rows, columns);
+    srand((unsigned int)time(NULL));
+    for (int i = 0; i < matrix->rows; i++) {
+        for (int j = 0; j < matrix->columns; j++) {
+            matrix->coeff[i][j] = (double complex)(rand()%100);
+        }
+    }
+    return matrix;
+}
+
+matrix_t * matrix_symetric_random(int rows, int columns)
+{
+    double complex random;
+    matrix_t *matrix = matrix_create(rows, columns);
+    srand((unsigned int)time(NULL));
+    for (int i = 0; i < matrix->rows; i++) {
+        for (int j = 0; j <= i; j++) {
+            random = (double complex)(rand()%100);
+            matrix->coeff[i][j] = matrix->coeff[j][i] = random;
         }
     }
     return matrix;
@@ -75,7 +97,7 @@ matrix_t * matrix_identity(int n)
 
 matrix_t * matrix_permutation(int line1, int line2, int n)
 {
-    double tmp;
+    double complex tmp;
     matrix_t * matrix = matrix_identity(n);
     for (int i = 0; i < n; i++)
     {
@@ -196,16 +218,22 @@ void plu_free(plu_t *plu)
 void matrix_display(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return; 
-    int i, j;
-    for (i = 0; i < matrix->rows; i++) {
+    double real, imag;
+    for (int i = 0; i < matrix->rows; i++) {
         printf("[");
-        for (j = 0; j < matrix->columns; j++){
-            if(matrix->coeff[i][j] < 1e-10)
-                printf("0 ");
-            else
-                printf("%g ", matrix->coeff[i][j]);
-    }
-        printf("]\n");
+        for (int j = 0; j < matrix->columns; j++){
+            real = creal(matrix->coeff[i][j]);
+            imag = cimag(matrix->coeff[i][j]);
+            if(fabs(real) < 1e-10 && fabs(imag) < 1e-10 )
+                printf(" 0");
+            else if(fabs(real) < 1e-10)
+                printf(" %gi", imag);
+            else if(fabs(imag) < 1e-10)
+                printf(" %g", real);
+            else    
+                printf(" %g+%gi", real, imag);
+        }
+        printf("\t]\n");
     }
 }
 
@@ -241,7 +269,7 @@ matrix_t * matrix_add_f(const matrix_t *matrix1, const matrix_t *matrix2)
     return add_matrix;
 }
 
-matrix_t * matrix_mult_scalar_f(const matrix_t *matrix, double lambda)
+matrix_t * matrix_mult_scalar_f(const matrix_t *matrix, double complex lambda)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     int i, j;
@@ -278,15 +306,10 @@ matrix_t * matrix_pow_f(const matrix_t *matrix, int pow)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;  
     if(!square_check(matrix, __func__))return NULL; 
-    matrix_t *pow_matrix = matrix_create(matrix->rows, matrix->columns);
+    matrix_t *pow_matrix = matrix_copy(matrix);
     matrix_t *tmp_matrix;
-    for (int j = 0; j < pow_matrix->rows; j++) {
-        for (int k = 0; k < pow_matrix->columns; k++) {
-            pow_matrix->coeff[j][k] = matrix->coeff[j][k];
-        }
-    }
     for (int i = 0; i < pow-1; i++) {
-        tmp_matrix = matrix_mult_f(pow_matrix, pow_matrix);
+        tmp_matrix = matrix_mult_f(pow_matrix, matrix);
         for (int j = 0; j < pow_matrix->rows; j++) {
             for (int k = 0; k < pow_matrix->columns; k++) {
                 pow_matrix->coeff[j][k] = tmp_matrix->coeff[j][k];
@@ -353,10 +376,10 @@ matrix_t * matrix_solve_diag_sup(const matrix_t *A, const matrix_t *B)
 }
  
 // Methods based upon raw determinant calculation. For fun only. Do never use them, cuz you've NO reason to use them. Really.
-double matrix_det_raw_f(const matrix_t *matrix)
+double complex matrix_det_raw_f(const matrix_t *matrix)
 {
-    double det = 0;
-    double sign = 0;
+    double complex det = 0;
+    double complex sign = 0;
     matrix_t *shrinked_matrix = NULL;
     if(!sanity_check((void *)matrix, __func__))return 0;
     if(matrix->columns != matrix->rows) return 0;
@@ -364,7 +387,7 @@ double matrix_det_raw_f(const matrix_t *matrix)
     for (int i = 0; i < matrix->columns; i++) 
     {
         shrinked_matrix=matrix_shrink_f(matrix, 0, i);
-        sign = (int)pow(-1.0,(double)i);
+        sign = (int)pow(-1.0,(double complex)i);
         det += sign * matrix->coeff[0][i] * matrix_det_raw_f(shrinked_matrix);
         matrix_free(shrinked_matrix);
     }
@@ -374,8 +397,8 @@ double matrix_det_raw_f(const matrix_t *matrix)
 matrix_t * matrix_inverse_raw_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
-    double det = matrix_det_raw_f(matrix);
-    double one = 1;
+    double complex det = matrix_det_raw_f(matrix);
+    double complex one = 1;
     if(!det){
         fprintf(stderr, "%s: not inversible matrix (|M| = 0)\n", __func__);
         return NULL;
@@ -402,7 +425,7 @@ matrix_t * matrix_com_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     if(!square_check(matrix, __func__))return NULL; 
-    double sign = 0;
+    double complex sign = 0;
     matrix_t *shrinked_matrix = NULL;
     matrix_t *co_matrix = matrix_create(matrix->rows, matrix->columns);
     for (int i = 0; i < co_matrix->rows; i++)
@@ -410,7 +433,7 @@ matrix_t * matrix_com_f(const matrix_t *matrix)
         for (int j = 0; j < co_matrix->columns; j++)
         {
             shrinked_matrix=matrix_shrink_f(matrix, i, j);
-            sign = (int)pow(-1.0,(double)(i+j));
+            sign = (int)pow(-1.0,(double complex)(i+j));
             co_matrix->coeff[i][j] = sign * matrix_det_raw_f(shrinked_matrix);
             matrix_free(shrinked_matrix);
         }
@@ -437,7 +460,7 @@ plu_t * matrix_plu_f(const matrix_t *matrix)
     plu_t *plu = plu_create(n); 
     matrix_t *A = matrix_copy(matrix), *L = plu->L, *U = plu->U;
     matrix_t *perm, *perm_mult;
-    double sum, tmp;
+    double complex sum, tmp;
     for (int i = 0; i < n; i++)
     {
         for (int j = i; j < n; j++)
@@ -484,12 +507,12 @@ plu_t * matrix_plu_f(const matrix_t *matrix)
     return(plu);  
 }
 
-double matrix_det_plu_f(const matrix_t *matrix)
+double complex matrix_det_plu_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return 0;
     if(!square_check(matrix, __func__))return 0; 
     plu_t *plu = matrix_plu_f(matrix);
-    double det = pow(-1.0, plu->nb_perm);
+    double complex det = pow(-1.0, plu->nb_perm);
     for (int i=0; i < plu->L->rows; i++)det *= plu->L->coeff[i][i];
     for (int i=0; i < plu->U->rows; i++)det *= plu->U->coeff[i][i];
     plu_free(plu);
@@ -514,25 +537,26 @@ matrix_t * matrix_inverse_plu_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     if(!square_check(matrix, __func__))return NULL; 
-    matrix_t *I = matrix_identity(matrix->rows);
-    matrix_t *matrix_inverse = matrix_solve_plu_f(matrix, I);
-    matrix_free(I);
+    matrix_t *Id = matrix_identity(matrix->rows);
+    matrix_t *matrix_inverse = matrix_solve_plu_f(matrix, Id);
+    matrix_free(Id);
     return(matrix_inverse);
 } 
 
+// Highly optimized fast methods based upon Cholesky decomposition.
 matrix_t * matrix_cholesky_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     if(!square_check(matrix, __func__))return NULL;
     if(!symetry_check(matrix, __func__))return NULL;
     int n = matrix->rows;
-    double sum;
+    double complex sum;
     matrix_t *L = matrix_create(n, n); 
     for (int i = 0; i < n; i++)
     {
         sum = 0;
         for (int k = 0; k < i; k++)sum += L->coeff[i][k] * L->coeff[i][k];
-        L->coeff[i][i] = sqrt(matrix->coeff[i][i] - sum);
+        L->coeff[i][i] = csqrt(matrix->coeff[i][i] - sum);
         for (int j = i+1; j < n; j++)
         {
             sum = 0;
@@ -563,8 +587,19 @@ matrix_t * matrix_inverse_cholesky_f(const matrix_t *matrix)
     if(!sanity_check((void *)matrix, __func__))return NULL;
     if(!square_check(matrix, __func__))return NULL;
     if(!symetry_check(matrix, __func__))return NULL;
-    matrix_t *I = matrix_identity(matrix->rows);
-    matrix_t *matrix_inverse = matrix_solve_cholesky_f(matrix, I);
-    matrix_free(I);
+    matrix_t *Id = matrix_identity(matrix->rows);
+    matrix_t *matrix_inverse = matrix_solve_cholesky_f(matrix, Id);
+    matrix_free(Id);
     return(matrix_inverse);
-} 
+}
+
+double complex matrix_det_cholesky_f(const matrix_t *matrix)
+{
+    if(!sanity_check((void *)matrix, __func__))return 0;
+    if(!square_check(matrix, __func__))return 0; 
+    matrix_t *L = matrix_cholesky_f(matrix);
+    double complex det = 1;
+    for (int i=0; i < L->rows; i++)det *= L->coeff[i][i];
+    matrix_free(L);
+    return det * det;
+}
