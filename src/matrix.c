@@ -219,21 +219,27 @@ void matrix_display(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return; 
     double real, imag;
+    char str[30] = {'\0'};
+    int len = 0;
     for (int i = 0; i < matrix->rows; i++) {
-        printf("[");
+        printf("[ ");
         for (int j = 0; j < matrix->columns; j++){
             real = creal(matrix->coeff[i][j]);
             imag = cimag(matrix->coeff[i][j]);
             if(fabs(real) < 1e-10 && fabs(imag) < 1e-10 )
-                printf(" 0");
+                len = sprintf(str, "0");
             else if(fabs(real) < 1e-10)
-                printf(" %gi", imag);
+                len = sprintf(str, "%.3gi", imag);
             else if(fabs(imag) < 1e-10)
-                printf(" %g", real);
-            else    
-                printf(" %g+%gi", real, imag);
+                len = sprintf(str, "%.3g", real);
+            else if(fabs(imag) > 0)    
+                len = sprintf(str, "%.3g+%.2gi", real, imag);
+            else
+                len = sprintf(str, "%.3g%.2gi", real, imag);
+            printf("%s", str);
+            for (int k=0; k< 9-len; k++)printf(" ");
         }
-        printf("\t]\n");
+        printf("]\n");
     }
 }
 

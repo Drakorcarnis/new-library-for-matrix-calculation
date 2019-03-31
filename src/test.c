@@ -176,6 +176,7 @@ int test_matrix_cholesky_f(matrix_t *matrix)
     matrix_t *LT = matrix_transp_f(L);
     matrix_t *LLT = matrix_mult_f(L, LT);
     matrix_display(LLT);
+    matrix_free(LLT);
     matrix_free(LT);
     matrix_free(L);
     free(formatted_time);
@@ -198,6 +199,7 @@ int test_matrix_det_plu_f(matrix_t *matrix)
     long long time2 = utime();
     char *formatted_time = format_time(time2 - time, "µs");
     printf("\n(%s)|M| = %g\n", formatted_time, creal(det));
+    free(formatted_time);
     return(1);
 }
 int test_matrix_det_cholesky_f(matrix_t *matrix)
@@ -207,6 +209,7 @@ int test_matrix_det_cholesky_f(matrix_t *matrix)
     long long time2 = utime();
     char *formatted_time = format_time(time2 - time, "µs");
     printf("\n(%s)|M| = %g\n", formatted_time, creal(det));
+    free(formatted_time);
     return(1);
 }
     
@@ -224,11 +227,16 @@ int test_function_f(matrix_t*(*function)(const matrix_t*), matrix_t* matrix, cha
     return(1);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     // matrix_t *matrix_p = str2matrix(argc-1, &argv[1], ',');
-    matrix_t *matrix1 = matrix_random(15,15);
-    matrix_t *matrix2 = matrix_symetric_random(15,15);
-    matrix_t *matrix3 = matrix_random(15,1);
+    int rank;
+    if (argc < 2 || atoi(argv[1]) < 1)
+        rank = 10;
+    else
+        rank = atoi(argv[1]);
+    matrix_t *matrix1 = matrix_random(rank,rank);
+    matrix_t *matrix2 = matrix_symetric_random(rank,rank);
+    matrix_t *matrix3 = matrix_random(rank,1);
     if(!matrix1)return(-1);
     if(!matrix2)return(-1);
     if(!matrix3)return(-1);
@@ -244,14 +252,15 @@ int main() {
     test_matrix_mult_scalar_f(matrix1, 0.5);
     test_matrix_pow_f(matrix1, 3);
     test_matrix_mult_f(matrix1, matrix2);
+    
     // test_function_f(&matrix_det_raw_f,matrix1, "|M|");
     // test_function_f(&matrix_com_f,matrix1, "com(M)");
     // test_function_f(&matrix_comp_f,matrix1, "comp(M)");
     // test_function_f(&matrix_inverse_raw_f, matrix1, "1/M");
     // test_matrix_det_raw_f(matrix2);
+    
     test_matrix_solve_plu_f(matrix1, matrix3);
     test_matrix_plu_f(matrix1);
-    // test_function_f(&matrix_det_plu_f,matrix1, "|M|");
     test_function_f(&matrix_inverse_plu_f,matrix1,"1/M");
     test_matrix_solve_cholesky_f(matrix2, matrix3);
     test_matrix_cholesky_f(matrix2);
