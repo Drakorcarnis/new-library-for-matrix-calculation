@@ -4,17 +4,20 @@
 CC     = gcc
 CFLAGS = -Wall -Werror -Wextra
 LDFLAGS = -lm
-TESTDBGLDFLAGS = -L$(DBGDIR) -lmatrix
-TESTRELLDFLAGS = -L$(RELDIR) -lmatrix
+DBGLDFLAGS = -L$(DBGDIR) -lmatrix
+RELLDFLAGS = -L$(RELDIR) -lmatrix
 
 #
 # Project files
 #
 SRCS = matrix.c
 TEST_SRCS = test.c
+REG_SRCS = regression.c
 OBJS = $(SRCS:.c=.o)
 TEST_OBJS = $(TEST_SRCS:.c=.o)
-EXE  = test
+REG_OBJS = $(REG_SRCS:.c=.o)
+TEST_EXE  = test
+REGRESSION_EXE = regression
 SO  = libmatrix.so
 
 #
@@ -37,7 +40,7 @@ RELCFLAGS = -shared -fPIC -O3 -DNDEBUG
 # Test Debug build settings
 #
 TESTDBGDIR = ../test/debug
-TESTDBGEXE = $(TESTDBGDIR)/$(EXE)
+TESTDBGEXE = $(TESTDBGDIR)/$(TEST_EXE)
 TESTDBGOBJS = $(addprefix $(TESTDBGDIR)/, $(TEST_OBJS))
 TESTDBGCFLAGS = -g -O0 -DDEBUG
 
@@ -45,14 +48,30 @@ TESTDBGCFLAGS = -g -O0 -DDEBUG
 # Test Release build settings
 #
 TESTRELDIR = ../test/release
-TESTRELEXE = $(TESTRELDIR)/$(EXE)
+TESTRELEXE = $(TESTRELDIR)/$(TEST_EXE)
 TESTRELOBJS = $(addprefix $(TESTRELDIR)/, $(TEST_OBJS))
 TESTRELCFLAGS = -O3 -DNDEBUG
 
-.PHONY: all clean debug prep release remake testdebug testrelease
+#
+# Regression Debug build settings
+#
+REGDBGDIR = ../regression/debug
+REGDBGEXE = $(REGDBGDIR)/$(REGRESSION_EXE)
+REGDBGOBJS = $(addprefix $(REGDBGDIR)/, $(REG_OBJS))
+REGDBGCFLAGS = -g -O0 -DDEBUG
+
+#
+# Regression Release build settings
+#
+REGRELDIR = ../regression/release
+REGRELEXE = $(REGRELDIR)/$(REGRESSION_EXE)
+REGRELOBJS = $(addprefix $(REGRELDIR)/, $(REG_OBJS))
+REGRELCFLAGS = -O3 -DNDEBUG
+
+.PHONY: all clean debug prep release remake testdebug testrelease regdebug regrelease
 
 # Default build
-all: prep release debug testdebug testrelease
+all: prep release debug testdebug testrelease regdebug regrelease
 
 #
 # Debug rules
@@ -81,7 +100,7 @@ $(RELDIR)/%.o: %.c
 testdebug: $(TESTDBGEXE)
 
 $(TESTDBGEXE): $(TESTDBGOBJS)
-	$(CC) $(CFLAGS) $(TESTDBGCFLAGS) -o $(TESTDBGEXE) $^ $(TESTDBGLDFLAGS)
+	$(CC) $(CFLAGS) $(TESTDBGCFLAGS) -o $(TESTDBGEXE) $^ $(DBGLDFLAGS)
 $(TESTDBGDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(TESTDBGCFLAGS) -o $@ $<
 
@@ -91,18 +110,39 @@ $(TESTDBGDIR)/%.o: %.c
 testrelease: $(TESTRELEXE)
 
 $(TESTRELEXE): $(TESTRELOBJS)
-	$(CC) $(CFLAGS) $(TESTRELCFLAGS) -o $(TESTRELEXE) $^ $(TESTRELLDFLAGS)
+	$(CC) $(CFLAGS) $(TESTRELCFLAGS) -o $(TESTRELEXE) $^ $(RELLDFLAGS)
 
 $(TESTRELDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(TESTRELCFLAGS) -o $@ $<
+#
+# Debug regression rules
+#
+regdebug: $(REGDBGEXE)
+
+$(REGDBGEXE): $(REGDBGOBJS)
+	$(CC) $(CFLAGS) $(REGDBGCFLAGS) -o $(REGDBGEXE) $^ $(DBGLDFLAGS)
+$(REGDBGDIR)/%.o: %.c
+	$(CC) -c $(CFLAGS) $(REGDBGCFLAGS) -o $@ $<
+
+#
+# Release regression rules
+#
+regrelease: $(REGRELEXE)
+
+$(REGRELEXE): $(REGRELOBJS)
+	$(CC) $(CFLAGS) $(REGRELCFLAGS) -o $(REGRELEXE) $^ $(RELLDFLAGS)
+
+$(REGRELDIR)/%.o: %.c
+	$(CC) -c $(CFLAGS) $(REGRELCFLAGS) -o $@ $<
+
 
 #
 # Other rules
 #
 prep:
-	@mkdir -p $(DBGDIR) $(RELDIR) $(TESTDBGDIR) $(TESTRELDIR)
+	@mkdir -p $(DBGDIR) $(RELDIR) $(TESTDBGDIR) $(TESTRELDIR) $(REGDBGDIR) $(REGRELDIR)
 
 remake: clean all
 
 clean:
-	rm -f $(RELEXE) $(RELOBJS) $(DBGEXE) $(DBGOBJS) $(TESTDBGEXE) $(TESTDBGOBJS) $(TESTRELEXE) $(TESTRELOBJS)
+	rm -f $(RELEXE) $(RELOBJS) $(DBGEXE) $(DBGOBJS) $(TESTDBGEXE) $(TESTDBGOBJS) $(TESTRELEXE) $(TESTRELOBJS) $(REGDBGEXE) $(REGDBGOBJS) $(REGRELEXE) $(REGRELOBJS)

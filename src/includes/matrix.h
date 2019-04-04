@@ -31,6 +31,7 @@ void        plu_free(plu_t *plu);
 
 // Matrix display function
 void        matrix_display(const matrix_t *matrix);                                         // Display matrix representation to stdout
+void        matrix_display_exact(const matrix_t *matrix);                                         // Display matrix representation to stdout
 
 // Matrix computation functions
 

@@ -215,32 +215,49 @@ void plu_free(plu_t *plu)
 }
 
 // Matrix display function
-void matrix_display(const matrix_t *matrix)
+void _matrix_display(const matrix_t *matrix, int exact)
 {
     if(!sanity_check((void *)matrix, __func__))return; 
     double real, imag;
-    char str[30] = {'\0'};
+    char str[100] = {'\0'};
     int len = 0;
     for (int i = 0; i < matrix->rows; i++) {
         printf("[ ");
         for (int j = 0; j < matrix->columns; j++){
             real = creal(matrix->coeff[i][j]);
             imag = cimag(matrix->coeff[i][j]);
-            if(fabs(real) < 1e-10 && fabs(imag) < 1e-10 )
-                len = sprintf(str, "0");
-            else if(fabs(real) < 1e-10)
-                len = sprintf(str, "%.3gi", imag);
-            else if(fabs(imag) < 1e-10)
-                len = sprintf(str, "%.3g", real);
-            else if(fabs(imag) > 0)    
-                len = sprintf(str, "%.3g+%.2gi", real, imag);
+            if (exact)
+            {
+                len = sprintf(str, "%.15f", real);
+                printf("%s ", str);
+            }
             else
-                len = sprintf(str, "%.3g%.2gi", real, imag);
-            printf("%s", str);
-            for (int k=0; k< 9-len; k++)printf(" ");
+            {
+                if(fabs(real) < 1e-10 && fabs(imag) < 1e-10 )
+                    len = sprintf(str, "0");
+                else if(fabs(real) < 1e-10)
+                    len = sprintf(str, "%.3gi", imag);
+                else if(fabs(imag) < 1e-10)
+                    len = sprintf(str, "%.3g", real);
+                else if(fabs(imag) > 0)    
+                    len = sprintf(str, "%.3g+%.2gi", real, imag);
+                else
+                    len = sprintf(str, "%.3g%.2gi", real, imag);
+                printf("%s", str);
+                for (int k=0; k< 9-len; k++)printf(" ");
+            }
         }
         printf("]\n");
     }
+}
+
+void matrix_display(const matrix_t *matrix)
+{
+    _matrix_display(matrix, 0);
+}
+void matrix_display_exact(const matrix_t *matrix)
+{
+    _matrix_display(matrix, 1);
 }
 
 // Matrix computation functions

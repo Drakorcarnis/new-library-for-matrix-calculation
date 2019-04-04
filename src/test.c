@@ -99,7 +99,7 @@ int test_matrix_solve_raw_f(const matrix_t *matrix1, matrix_t *matrix2)
     long long time2 = utime();
     if(!matrix_cramer)return(0);
     char *formatted_time = format_time(time2 - time, "µs");
-    printf("\n(%s)X =\n", formatted_time);
+    printf("\n(%s)raw X =\n", formatted_time);
     matrix_display(matrix_cramer);
     matrix_free(matrix_cramer);
     free(formatted_time);
@@ -113,7 +113,7 @@ int test_matrix_solve_plu_f(matrix_t *matrix1, matrix_t *matrix2)
     long long time2 = utime();
     if(!matrix_cramer)return(0);
     char *formatted_time = format_time(time2 - time, "µs");
-    printf("\n(%s)X =\n", formatted_time);
+    printf("\n(%s)plu X =\n", formatted_time);
     matrix_display(matrix_cramer);
     matrix_free(matrix_cramer);
     free(formatted_time);
@@ -127,7 +127,7 @@ int test_matrix_solve_cholesky_f(matrix_t *matrix1, matrix_t *matrix2)
     long long time2 = utime();
     if(!matrix_cramer)return(0);
     char *formatted_time = format_time(time2 - time, "µs");
-    printf("\n(%s)X =\n", formatted_time);
+    printf("\n(%s)cho X =\n", formatted_time);
     matrix_display(matrix_cramer);
     matrix_free(matrix_cramer);
     free(formatted_time);
@@ -189,7 +189,7 @@ int test_matrix_det_raw_f(matrix_t *matrix)
     double complex det = matrix_det_raw_f(matrix);
     long long time2 = utime();
     char *formatted_time = format_time(time2 - time, "µs");
-    printf("\n(%s)|M| = %g\n", formatted_time, creal(det));
+    printf("\n(%s)raw |M| = %g\n", formatted_time, creal(det));
     return(1);
 }
 int test_matrix_det_plu_f(matrix_t *matrix)
@@ -198,7 +198,7 @@ int test_matrix_det_plu_f(matrix_t *matrix)
     double complex det = matrix_det_plu_f(matrix);
     long long time2 = utime();
     char *formatted_time = format_time(time2 - time, "µs");
-    printf("\n(%s)|M| = %g\n", formatted_time, creal(det));
+    printf("\n(%s)plu |M| = %g\n", formatted_time, creal(det));
     free(formatted_time);
     return(1);
 }
@@ -208,7 +208,7 @@ int test_matrix_det_cholesky_f(matrix_t *matrix)
     double complex det = matrix_det_cholesky_f(matrix);
     long long time2 = utime();
     char *formatted_time = format_time(time2 - time, "µs");
-    printf("\n(%s)|M| = %g\n", formatted_time, creal(det));
+    printf("\n(%s)cho |M| = %g\n", formatted_time, creal(det));
     free(formatted_time);
     return(1);
 }
@@ -261,11 +261,11 @@ int main(int argc, char *argv[]) {
     
     test_matrix_solve_plu_f(matrix1, matrix3);
     test_matrix_plu_f(matrix1);
-    test_function_f(&matrix_inverse_plu_f,matrix1,"1/M");
+    test_function_f(&matrix_inverse_plu_f,matrix1,"plu 1/M");
     test_matrix_solve_cholesky_f(matrix2, matrix3);
     test_matrix_cholesky_f(matrix2);
-    test_function_f(&matrix_inverse_plu_f,matrix2,"1/M2");
-    test_function_f(&matrix_inverse_cholesky_f,matrix2,"1/M2");
+    test_function_f(&matrix_inverse_plu_f,matrix2,"plu 1/M2");
+    test_function_f(&matrix_inverse_cholesky_f,matrix2,"cho 1/M2");
     test_matrix_det_plu_f(matrix2);
     test_matrix_det_cholesky_f(matrix2);
     matrix_free(matrix1);
