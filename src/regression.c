@@ -5,6 +5,12 @@
 #include <math.h>
 #include "includes/matrix.h"
 
+#define DATA_PATH "/home/Drakorcarnis/new_library/src/data"
+#define PRECISION 1e-15
+#define INT_PRECISION 15
+double precision = PRECISION;
+double int_precision = INT_PRECISION;
+
 #define IN_1MATRIX_OUT_DOUBLE       matrix_det_plu_f,   matrix_det_cholesky_f
 #define IN_1MATRIX_OUT_DOUBLE_IN    "matrix",           "matrix_sym"
 #define IN_1MATRIX_OUT_DOUBLE_OUT   1.50927e+09,        1
@@ -93,26 +99,11 @@ int test_matrix_equality(const matrix_t *matrix1, const matrix_t *matrix2){
     if((matrix1->rows != matrix2->rows) || (matrix1->columns != matrix2->columns))return 0;
     for (int i=0; i<matrix1->rows; i++){
         for (int j=0; j<matrix1->columns; j++){
-            if(fabs(creal(matrix1->coeff[i][j] - matrix2->coeff[i][j])) > 0.001)return 0;
-            if(fabs(cimag(matrix1->coeff[i][j] - matrix2->coeff[i][j])) > 0.001)return 0;
+            if(fabs(creal(matrix1->coeff[i][j] - matrix2->coeff[i][j])) > precision)return 0;
+            if(fabs(cimag(matrix1->coeff[i][j] - matrix2->coeff[i][j])) > precision)return 0;
         }
     }
     return 1;
-}
-
-result_t test_matrix_plu_f(const matrix_t *matrix)
-{
-    long long time = utime();
-    plu_t *plu = matrix_plu_f(matrix);
-    long long time2 = utime();
-    matrix_t *LU = matrix_mult_f(plu->L, plu->U);
-    matrix_t *PLU = matrix_mult_f(plu->P, LU);
-    result_t res = {"test_matrix_plu_f", test_matrix_equality(PLU, matrix), time2 - time};
-    process_result(res);
-    matrix_free(LU);
-    matrix_free(PLU);
-    plu_free(plu);
-    return(res);
 }
 
 result_t test_function_in_matrix_out_double_f(double complex(*function)(const matrix_t*), matrix_t* matrix, double complex expected, char *test_name)
@@ -133,7 +124,7 @@ result_t test_function_in_matrix_out_matrix_f(matrix_t*(*function)(const matrix_
     long long time2 = utime();
     result_t res = {test_name, test_matrix_equality(expected, ret), time2 - time};
     process_result(res);
-    if (!res.result){printf("expected:\n");matrix_display_exact(expected);printf("got:\n");matrix_display_exact(ret);}
+    if (!res.result){printf("expected:\n");matrix_display_exact(expected, int_precision);printf("got:\n");matrix_display_exact(ret, int_precision);}
     matrix_free(ret);
     return(res);
 }
@@ -145,7 +136,7 @@ result_t test_function_in_2matrix_out_matrix_f(matrix_t*(*function)(const matrix
     long long time2 = utime();
     result_t res = {test_name, test_matrix_equality(expected, ret), time2 - time};
     process_result(res);
-    if (!res.result){printf("expected:\n");matrix_display_exact(expected);printf("got:\n");matrix_display_exact(ret);}
+    if (!res.result){printf("expected:\n");matrix_display_exact(expected, int_precision);printf("got:\n");matrix_display_exact(ret, int_precision);}
     matrix_free(ret);
     return(res);
 }
@@ -157,7 +148,7 @@ result_t test_function_in_matrix_double_out_matrix_f(matrix_t*(*function)(const 
     long long time2 = utime();
     result_t res = {test_name, test_matrix_equality(expected, ret), time2 - time};
     process_result(res);
-if (!res.result){printf("expected:\n");matrix_display_exact(expected);printf("got:\n");matrix_display_exact(ret);}
+if (!res.result){printf("expected:\n");matrix_display_exact(expected, int_precision);printf("got:\n");matrix_display_exact(ret, int_precision);}
     matrix_free(ret);
     return(res);
 }
@@ -169,7 +160,7 @@ result_t test_function_in_matrix_int_out_matrix_f(matrix_t*(*function)(const mat
     long long time2 = utime();
     result_t res = {test_name, test_matrix_equality(expected, ret), time2 - time};
     process_result(res);
-if (!res.result){printf("expected:\n");matrix_display_exact(expected);printf("got:\n");matrix_display_exact(ret);}
+if (!res.result){printf("expected:\n");matrix_display_exact(expected, int_precision);printf("got:\n");matrix_display_exact(ret, int_precision);}
     matrix_free(ret);
     return(res);
 }
@@ -196,11 +187,14 @@ void free_matrixtab(matrix_t** matrixtab, ssize_t size)
 }
 
 int main(int argc, char **argv) {
-    char *data_path;
-    if(argc <2)
-        data_path = "/home/Drakorcarnis/new_library/src/data";
-    else
-        data_path = argv[1];
+    char *data_path = DATA_PATH;
+    if(argc > 1){
+        ssize_t bufsz = snprintf(NULL, 0, "1e-%s",argv[1]);
+        char *str_precision = malloc(bufsz);
+        snprintf(str_precision, bufsz + 1, "1e-%s",argv[1]);
+        precision = strtod(str_precision, NULL);
+        int_precision = atoi(argv[1]);
+    }
     ssize_t size;
     
     double complex(*test_function_in_1matrix_out_double_f[])(const matrix_t*) = {IN_1MATRIX_OUT_DOUBLE};

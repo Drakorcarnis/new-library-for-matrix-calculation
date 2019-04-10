@@ -134,55 +134,6 @@ int test_matrix_solve_cholesky_f(matrix_t *matrix1, matrix_t *matrix2)
     return(1);
 }
 
-int test_matrix_plu_f(matrix_t *matrix)
-{
-    long long time = utime();
-    plu_t *plu = matrix_plu_f(matrix);
-    long long time2 = utime();
-    char *formatted_time = format_time(time2 - time, "µs");
-    if(!plu)return(0);
-    printf("\nPLU computed in %s\n", formatted_time);
-    printf("\nA =\n");
-    matrix_display(matrix);
-    printf("\nP =\n");
-    matrix_display(plu->P);
-    printf("\nL =\n");
-    matrix_display(plu->L);
-    printf("\nU =\n");
-    matrix_display(plu->U);
-    printf("\nP*L*U =\n");
-    matrix_t *LU = matrix_mult_f(plu->L, plu->U);
-    matrix_t *PLU = matrix_mult_f(plu->P, LU);
-    matrix_display(PLU);
-    matrix_free(LU);
-    matrix_free(PLU);
-    plu_free(plu);
-    free(formatted_time);
-    return(1);
-}
-int test_matrix_cholesky_f(matrix_t *matrix)
-{
-    long long time = utime();
-    matrix_t *L = matrix_cholesky_f(matrix);
-    long long time2 = utime();
-    char *formatted_time = format_time(time2 - time, "µs");
-    if(!L)return(0);
-    printf("\nCholesky computed in %s\n", formatted_time);
-    printf("\nA =\n");
-    matrix_display(matrix);
-    printf("\nL =\n");
-    matrix_display(L);
-    printf("\nL*LT =\n");
-    matrix_t *LT = matrix_transp_f(L);
-    matrix_t *LLT = matrix_mult_f(L, LT);
-    matrix_display(LLT);
-    matrix_free(LLT);
-    matrix_free(LT);
-    matrix_free(L);
-    free(formatted_time);
-    return(1);
-}
-
 int test_matrix_det_raw_f(matrix_t *matrix)
 {
     long long time = utime();
@@ -260,10 +211,8 @@ int main(int argc, char *argv[]) {
     // test_matrix_det_raw_f(matrix2);
     
     test_matrix_solve_plu_f(matrix1, matrix3);
-    test_matrix_plu_f(matrix1);
     test_function_f(&matrix_inverse_plu_f,matrix1,"plu 1/M");
     test_matrix_solve_cholesky_f(matrix2, matrix3);
-    test_matrix_cholesky_f(matrix2);
     test_function_f(&matrix_inverse_plu_f,matrix2,"plu 1/M2");
     test_function_f(&matrix_inverse_cholesky_f,matrix2,"cho 1/M2");
     test_matrix_det_plu_f(matrix2);

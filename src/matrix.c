@@ -7,6 +7,24 @@
 #include <complex.h>
 #include "includes/matrix.h"
 
+
+typedef struct {
+    int nb_perm;
+    matrix_t *P;
+    matrix_t *L;
+    matrix_t *U;
+} plu_t;
+
+static int sanity_check(const void *pointer, const char *function_name);
+static int square_check(const matrix_t *matrix, const char *function_name);
+static int symetry_check(const matrix_t *matrix, const char *function_name);
+static double complex str2double(const char *str, int len);
+static void _matrix_display(const matrix_t *matrix, int exact);
+static plu_t * plu_create(int rank);
+static void plu_free(plu_t *plu);
+static plu_t * matrix_plu_f(const matrix_t *matrix);
+static matrix_t * matrix_cholesky_f(const matrix_t *matrix);
+
 static int sanity_check(const void *pointer, const char *function_name)
 {
     if(!pointer)
@@ -44,22 +62,96 @@ static int symetry_check(const matrix_t *matrix, const char *function_name)
 static double complex str2double(const char *str, int len)
 {
     char *s = calloc(len+1, sizeof(char));
+    if (!s){
+        perror("alloc failed");
+        return -1;
+    }
     memcpy(s, str, len);
     double complex ret = strtod(s,NULL);
     free(s);
     return ret;
 }
 
+static void _matrix_display(const matrix_t *matrix, int precision)
+{
+    if(!sanity_check((void *)matrix, __func__))return; 
+    double real, imag;
+    char str[100] = {'\0'};
+    int len = 0;
+    for (int i = 0; i < matrix->rows; i++) {
+        printf("[ ");
+        for (int j = 0; j < matrix->columns; j++){
+            real = creal(matrix->coeff[i][j]);
+            imag = cimag(matrix->coeff[i][j]);
+            if (precision)
+            {
+                len = sprintf(str, "%.*f", precision, real);
+                printf("%s ", str);
+            }
+            else
+            {
+                if(fabs(real) < 1e-10 && fabs(imag) < 1e-10 )
+                    len = sprintf(str, "0");
+                else if(fabs(real) < 1e-10)
+                    len = sprintf(str, "%.3gi", imag);
+                else if(fabs(imag) < 1e-10)
+                    len = sprintf(str, "%.3g", real);
+                else if(fabs(imag) > 0)    
+                    len = sprintf(str, "%.3g+%.2gi", real, imag);
+                else
+                    len = sprintf(str, "%.3g%.2gi", real, imag);
+                printf("%s", str);
+                for (int k=0; k< 9-len; k++)printf(" ");
+            }
+        }
+        printf("]\n");
+    }
+}
+
+static plu_t * plu_create(int rank){
+    plu_t *plu = malloc(sizeof(plu_t));
+    if (!plu){
+        perror("alloc failed");
+        return NULL;
+    }
+    plu->P = matrix_identity(rank);
+    plu->L = matrix_create(rank, rank);
+    plu->U = matrix_identity(rank);
+    plu->nb_perm = 0;
+    return plu;
+}
+
+static void plu_free(plu_t *plu)
+{
+    if(!sanity_check(plu, __func__))return; 
+    matrix_free(plu->P);
+    matrix_free(plu->L);
+    matrix_free(plu->U);
+    free(plu);   
+}
 // Matrix creation functions
 
 matrix_t * matrix_create(int rows, int columns)
 {
+    int i;
     matrix_t *matrix = malloc(sizeof(matrix_t));
+    if (!matrix) goto failed_matrix;
     matrix->rows = rows;
     matrix->columns = columns;
     matrix->coeff = malloc(rows*sizeof(double complex *));
-    for (int i = 0; i < rows; i++)matrix->coeff[i] = calloc(columns, sizeof(double complex));
+    if (!matrix->coeff) goto failed_coeff;
+    for (i = 0; i < rows; i++){
+        matrix->coeff[i] = calloc(columns, sizeof(double complex));
+        if (!matrix->coeff[i]) goto failed_coeff_elt;
+    }
     return matrix;
+failed_coeff_elt:
+    for (int j = 0; j < i; j++)free(matrix->coeff[j]);
+failed_coeff:
+    free(matrix);
+failed_matrix:
+    perror("alloc failed");
+    return NULL;
 }
 
 matrix_t * matrix_random(int rows, int columns)
@@ -68,7 +160,7 @@ matrix_t * matrix_random(int rows, int columns)
     srand((unsigned int)time(NULL));
     for (int i = 0; i < matrix->rows; i++) {
         for (int j = 0; j < matrix->columns; j++) {
-            matrix->coeff[i][j] = (double complex)(rand()%100);
+            matrix->coeff[i][j] = (double complex)(pow(-1.0, rand())*(rand()%10));
         }
     }
     return matrix;
@@ -81,7 +173,7 @@ matrix_t * matrix_symetric_random(int rows, int columns)
     srand((unsigned int)time(NULL));
     for (int i = 0; i < matrix->rows; i++) {
         for (int j = 0; j <= i; j++) {
-            random = (double complex)(rand()%100);
+            random = (double complex)(pow(-1.0, rand())*(rand()%10));
             matrix->coeff[i][j] = matrix->coeff[j][i] = random;
         }
     }
@@ -108,15 +200,6 @@ matrix_t * matrix_permutation(int line1, int line2, int n)
     matrix_t * transpose = matrix_transp_f(matrix);
     matrix_free(matrix);
     return(transpose);
-}
-
-plu_t * plu_create(int rank){
-    plu_t *plu = malloc(sizeof(plu_t));
-    plu->P = matrix_identity(rank);
-    plu->L = matrix_create(rank, rank);
-    plu->U = matrix_identity(rank);
-    plu->nb_perm = 0;
-    return plu;
 }
 
 matrix_t * matrix_copy(const matrix_t *matrix)
@@ -169,27 +252,44 @@ matrix_t * str2matrix(int argc, char **argv, char separator)
 matrix_t * file2matrix(char *filename)
 {
     FILE *fp = fopen(filename, "r");
+    if(!fp){
+        perror("alloc failed");
+        return NULL;
+    }
     int argc = 0, i;
     char *line = NULL;
     size_t len = 0;
     ssize_t read;
-    if(!sanity_check(fp, __func__))return NULL;
+    matrix_t *matrix = NULL;
     char **argv = malloc(sizeof(char*));
+    if(!argv){
+        perror("alloc failed");
+        return NULL;
+    }
     while ((read = getline(&line, &len, fp)) != -1) {
         if (read > 1 || ((read == 1) && (strcmp(line, "\n") != 0))){
             argv = realloc(argv, (argc + 1) * sizeof(char*));
+            if(!argv){
+                perror("alloc failed");
+                goto finally;
+            }
             argv[argc] = calloc(read+1, sizeof(char));
+            if(!argv[argc]){
+                perror("alloc failed");
+                goto finally;
+            }
             strncpy(argv[argc++], line, read);
         }    
     }
-    if(line)free(line);
-    fclose(fp);
-    matrix_t *matrix = str2matrix(argc, argv, ' ');
+    matrix = str2matrix(argc, argv, ' ');
+finally:
     for (i=0; i<argc; i++)
     {
         free(argv[i]);
     }
     free(argv);
+    if(line)free(line);
+    fclose(fp);
     return matrix;
 }
 
@@ -205,59 +305,15 @@ void matrix_free(matrix_t *matrix)
     matrix = NULL;
 }
 
-void plu_free(plu_t *plu)
-{
-    if(!sanity_check(plu, __func__))return; 
-    matrix_free(plu->P);
-    matrix_free(plu->L);
-    matrix_free(plu->U);
-    free(plu);   
-}
-
-// Matrix display function
-void _matrix_display(const matrix_t *matrix, int exact)
-{
-    if(!sanity_check((void *)matrix, __func__))return; 
-    double real, imag;
-    char str[100] = {'\0'};
-    int len = 0;
-    for (int i = 0; i < matrix->rows; i++) {
-        printf("[ ");
-        for (int j = 0; j < matrix->columns; j++){
-            real = creal(matrix->coeff[i][j]);
-            imag = cimag(matrix->coeff[i][j]);
-            if (exact)
-            {
-                len = sprintf(str, "%.15f", real);
-                printf("%s ", str);
-            }
-            else
-            {
-                if(fabs(real) < 1e-10 && fabs(imag) < 1e-10 )
-                    len = sprintf(str, "0");
-                else if(fabs(real) < 1e-10)
-                    len = sprintf(str, "%.3gi", imag);
-                else if(fabs(imag) < 1e-10)
-                    len = sprintf(str, "%.3g", real);
-                else if(fabs(imag) > 0)    
-                    len = sprintf(str, "%.3g+%.2gi", real, imag);
-                else
-                    len = sprintf(str, "%.3g%.2gi", real, imag);
-                printf("%s", str);
-                for (int k=0; k< 9-len; k++)printf(" ");
-            }
-        }
-        printf("]\n");
-    }
-}
+// Matrix display functions
 
 void matrix_display(const matrix_t *matrix)
 {
     _matrix_display(matrix, 0);
 }
-void matrix_display_exact(const matrix_t *matrix)
+void matrix_display_exact(const matrix_t *matrix, int precision)
 {
-    _matrix_display(matrix, 1);
+    _matrix_display(matrix, precision);
 }
 
 // Matrix computation functions
@@ -475,7 +531,7 @@ matrix_t * matrix_comp_f(const matrix_t *matrix)
 }
 
 // Highly optimized fast methods based upon PLU decomposition.
-plu_t * matrix_plu_f(const matrix_t *matrix)
+static plu_t * matrix_plu_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     if(!square_check(matrix, __func__))return NULL;
@@ -567,7 +623,7 @@ matrix_t * matrix_inverse_plu_f(const matrix_t *matrix)
 } 
 
 // Highly optimized fast methods based upon Cholesky decomposition.
-matrix_t * matrix_cholesky_f(const matrix_t *matrix)
+static matrix_t * matrix_cholesky_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     if(!square_check(matrix, __func__))return NULL;
