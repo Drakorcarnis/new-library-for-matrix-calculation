@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
+#include <time.h>
 #include <string.h>
 #include <math.h>
 #include "includes/matrix.h"
@@ -21,11 +21,11 @@ double int_precision = INT_PRECISION;
 #define IN_1MATRIX_OUT_MATRIX_OUT   "matrix_transp",    "matrix_inv",           "matrix_sym_inv"
 #define IN_1MATRIX_OUT_MATRIX_NAME  "matrix_transp_f",  "matrix_inverse_plu_f", "matrix_inverse_cholesky_f"
 
-#define IN_2MATRIX_OUT_MATRIX       matrix_add_f,   matrix_mult_f,      matrix_solve_plu_f,     matrix_solve_cholesky_f,  
-#define IN_2MATRIX_OUT_MATRIX_IN0   "matrix",       "matrix",           "matrix",               "matrix_sym",                 
-#define IN_2MATRIX_OUT_MATRIX_IN1   "matrix",       "matrix",           "B",                    "B",                      
-#define IN_2MATRIX_OUT_MATRIX_OUT   "matrix_add",   "matrix_mult",      "X",                    "X_sym",                      
-#define IN_2MATRIX_OUT_MATRIX_NAME  "matrix_add_f", "matrix_mult_f",    "matrix_solve_plu_f",   "matrix_sym_solve_cholesky_f",
+#define IN_2MATRIX_OUT_MATRIX       matrix_add_f,   matrix_mult_f,      matrix_solve_plu_f,     matrix_solve_cholesky_f,        matrix_solve_plu_f,  
+#define IN_2MATRIX_OUT_MATRIX_IN0   "matrix",       "matrix",           "matrix",               "matrix_sym",                   "matrix_sym",            
+#define IN_2MATRIX_OUT_MATRIX_IN1   "matrix",       "matrix",           "B",                    "B",                            "B",                 
+#define IN_2MATRIX_OUT_MATRIX_OUT   "matrix_add",   "matrix_mult",      "X",                    "X_sym",                        "X_sym",                 
+#define IN_2MATRIX_OUT_MATRIX_NAME  "matrix_add_f", "matrix_mult_f",    "matrix_solve_plu_f",   "matrix_sym_solve_cholesky_f",  "matrix_solve_plu_f sym",
 
 #define IN_1MATRIX_1DOUBLE_OUT_MATRIX       matrix_mult_scalar_f
 #define IN_1MATRIX_1DOUBLE_OUT_MATRIX_IN0   "matrix"
@@ -49,7 +49,7 @@ double int_precision = INT_PRECISION;
 typedef struct {
     char *test_name;
     int result;
-    long long utime;
+    long long mstime;
 }result_t;
 
 char * format_time(const long long input_time, char* format)
@@ -62,7 +62,7 @@ char * format_time(const long long input_time, char* format)
     char *ret = malloc(30*sizeof(char));
     for (scale = 1; (scale <= 10) && (strcmp(format, formats[scale-1]) != 0); scale++);
     if(scale > 10)return(NULL); // Unsupported format, you filthy rat !
-    if(input_time<=0){sprintf(ret, "0%s\n", format);return(ret);} // Quickly handle case 0
+    if(input_time<=0){sprintf(ret, "0%s", format);return(ret);} // Quickly handle case 0
     for (i = 0; i <= scale; i++)
     {
         timestamp[i] = input_time;
@@ -76,16 +76,14 @@ char * format_time(const long long input_time, char* format)
     return(ret);
 }
 
-long long int utime(void)
+long long mstime(void)
 {
-   struct timeval tv;
-   gettimeofday(&tv, NULL);
-   return((long long)(tv.tv_usec + (long long)tv.tv_sec * 1000000));
+   return((long long)(1e3*clock()/CLOCKS_PER_SEC));
 }
 
 void process_result(result_t res)
 {
-    char *formatted_time = format_time(res.utime, "µs");
+    char *formatted_time = format_time(res.mstime, "ms");
     if (res.result)
         printf("\033[0;32m[OK]");
     else
@@ -108,59 +106,93 @@ int test_matrix_equality(const matrix_t *matrix1, const matrix_t *matrix2){
 
 result_t test_function_in_matrix_out_double_f(double complex(*function)(const matrix_t*), matrix_t* matrix, double complex expected, char *test_name)
 {
-    long long time = utime();
+    long long time = mstime();
     double complex ret = (function)(matrix);
-    long long time2 = utime();
+    long long time2 = mstime();
     result_t res = {test_name, fabs(-1+creal(ret)/creal(expected)) < 2e-3, time2 - time};
     process_result(res);
-    if (!res.result) printf("expected: %f\ngot: %f\n",creal(expected), creal(ret));
+    if (!res.result){
+        printf("input:\n");
+        matrix_display(matrix);
+        printf("expected: %f\ngot: %f\n",creal(expected), creal(ret));
+    }
     return(res);
 }
 
 result_t test_function_in_matrix_out_matrix_f(matrix_t*(*function)(const matrix_t*), matrix_t* matrix, matrix_t* expected, char *test_name)
 {
-    long long time = utime();
+    long long time = mstime();
     matrix_t *ret = (function)(matrix);
-    long long time2 = utime();
+    long long time2 = mstime();
     result_t res = {test_name, test_matrix_equality(expected, ret), time2 - time};
     process_result(res);
-    if (!res.result){printf("expected:\n");matrix_display_exact(expected, int_precision);printf("got:\n");matrix_display_exact(ret, int_precision);}
+    if (!res.result){
+        printf("input:\n");
+        matrix_display(matrix);
+        printf("expected:\n");
+        matrix_display_exact(expected, int_precision);
+        printf("got:\n");
+        matrix_display_exact(ret, int_precision);
+    }
     matrix_free(ret);
     return(res);
 }
 
 result_t test_function_in_2matrix_out_matrix_f(matrix_t*(*function)(const matrix_t*, const matrix_t*), matrix_t* matrix1, matrix_t* matrix2, matrix_t* expected, char *test_name)
 {
-    long long time = utime();
+    long long time = mstime();
     matrix_t *ret = (function)(matrix1, matrix2);
-    long long time2 = utime();
+    long long time2 = mstime();
     result_t res = {test_name, test_matrix_equality(expected, ret), time2 - time};
     process_result(res);
-    if (!res.result){printf("expected:\n");matrix_display_exact(expected, int_precision);printf("got:\n");matrix_display_exact(ret, int_precision);}
+    if (!res.result){
+        printf("input1:\n");
+        matrix_display(matrix1);
+        printf("input2:\n");
+        matrix_display(matrix2);
+        printf("expected:\n");
+        matrix_display_exact(expected, int_precision);
+        printf("got:\n");
+        matrix_display_exact(ret, int_precision);
+    }
     matrix_free(ret);
     return(res);
 }
 
 result_t test_function_in_matrix_double_out_matrix_f(matrix_t*(*function)(const matrix_t*, double complex), matrix_t* matrix, double complex val, matrix_t* expected, char *test_name)
 {
-    long long time = utime();
+    long long time = mstime();
     matrix_t *ret = (function)(matrix, val);
-    long long time2 = utime();
+    long long time2 = mstime();
     result_t res = {test_name, test_matrix_equality(expected, ret), time2 - time};
     process_result(res);
-if (!res.result){printf("expected:\n");matrix_display_exact(expected, int_precision);printf("got:\n");matrix_display_exact(ret, int_precision);}
+    if (!res.result){
+        printf("input:\n");
+        matrix_display(matrix);
+        printf("expected:\n");
+        matrix_display_exact(expected, int_precision);
+        printf("got:\n");
+        matrix_display_exact(ret, int_precision);
+    }
     matrix_free(ret);
     return(res);
 }
 
 result_t test_function_in_matrix_int_out_matrix_f(matrix_t*(*function)(const matrix_t*, int), matrix_t* matrix, int val, matrix_t* expected, char *test_name)
 {
-    long long time = utime();
+    long long time = mstime();
     matrix_t *ret = (function)(matrix, val);
-    long long time2 = utime();
+    long long time2 = mstime();
     result_t res = {test_name, test_matrix_equality(expected, ret), time2 - time};
     process_result(res);
-if (!res.result){printf("expected:\n");matrix_display_exact(expected, int_precision);printf("got:\n");matrix_display_exact(ret, int_precision);}
+    if (!res.result){
+        printf("input:\n");
+        matrix_display(matrix);
+        printf("expected:\n");
+        matrix_display_exact(expected, int_precision);
+        printf("got:\n");
+        matrix_display_exact(ret, int_precision);
+    }
     matrix_free(ret);
     return(res);
 }

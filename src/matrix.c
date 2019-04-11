@@ -605,10 +605,17 @@ matrix_t * matrix_solve_plu_f(const matrix_t *A, const matrix_t *B)
     plu_t *plu = matrix_plu_f(A);
     matrix_t *Z = matrix_solve_diag_inf(plu->L, B);
     matrix_t *X = matrix_solve_diag_sup(plu->U, Z);
-    matrix_t *ret = matrix_mult_f(X, plu->P);
-    plu_free(plu);
-    matrix_free(X);
     matrix_free(Z);
+    matrix_t *perm = matrix_mult_f(X, plu->P);
+    matrix_free(X);
+    plu_free(plu);
+    matrix_t *ret = matrix_create(A->rows,B->columns);
+    for (int i=0; i < A->rows; i++){
+        for (int j=0; j < B->columns; j++){
+            ret->coeff[i][j] = perm->coeff[i][j];
+        }
+    }
+    matrix_free(perm);
     return(ret);
 } 
 
@@ -654,11 +661,18 @@ matrix_t * matrix_solve_cholesky_f(const matrix_t *A, const matrix_t *B)
     matrix_t *L = matrix_cholesky_f(A);
     matrix_t *LT = matrix_transp_f(L);
     matrix_t *Z = matrix_solve_diag_inf(L, B);
-    matrix_t *X = matrix_solve_diag_sup(LT, Z);
     matrix_free(L);
+    matrix_t *X = matrix_solve_diag_sup(LT, Z);
     matrix_free(LT);
     matrix_free(Z);
-    return(X);
+    matrix_t *ret = matrix_create(A->rows,B->columns);
+    for (int i=0; i < A->rows; i++){
+        for (int j=0; j < B->columns; j++){
+            ret->coeff[i][j] = X->coeff[i][j];
+        }
+    }
+    matrix_free(X);
+    return(ret);
 }
 
 matrix_t * matrix_inverse_cholesky_f(const matrix_t *matrix)
