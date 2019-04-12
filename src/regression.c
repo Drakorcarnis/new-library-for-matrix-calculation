@@ -58,11 +58,18 @@ char * format_time(const long long input_time, char* format)
     const int  timescales[10] = {1,365,24,60,60,1000,1000,1000,1000,1000};
     const int width[10] = {0,3,2,2,2,3,3,3,3,3};
     long long timestamp[10];
-    int  scale, i, j, count;
-    char *ret = malloc(30*sizeof(char));
+    int  scale, i, j, k;
+    ssize_t bufsz;
+    char *ret = NULL;
     for (scale = 1; (scale <= 10) && (strcmp(format, formats[scale-1]) != 0); scale++);
     if(scale > 10)return(NULL); // Unsupported format, you filthy rat !
-    if(input_time<=0){sprintf(ret, "0%s", format);return(ret);} // Quickly handle case 0
+    if(input_time<=0){ // Quickly handle case 0
+        bufsz = snprintf(NULL, 0, "0%s", format);
+        ret = malloc(bufsz * sizeof(*ret));
+        if(!ret){ perror("malloc");exit(0);}
+        snprintf(ret, bufsz+1, "0%s", format);
+        return(ret);
+    }
     for (i = 0; i <= scale; i++)
     {
         timestamp[i] = input_time;
@@ -71,8 +78,12 @@ char * format_time(const long long input_time, char* format)
     }
     for (i=0; i < scale && timestamp[i] == 0; i++ );
     for (j=scale; j > i && timestamp[j] == 0; j-- );
-    count = sprintf(ret, "%lld%s",timestamp[i],formats[i]);
-    for (i=i+1; i < j && (count +=(int)sprintf(ret + count, "%0*lld%s",width[i],timestamp[i],formats[i])); i++ );
+    bufsz = snprintf(NULL, 0, "%lld%s",timestamp[i],formats[i]);
+    for (k=i+1; k < j && (bufsz += snprintf(NULL, 0, "%0*lld%s",width[k],timestamp[k],formats[k])); k++ );
+    ret = malloc(bufsz * sizeof(*ret));
+    if(!ret){perror("malloc");exit(0);}
+    bufsz = sprintf(ret, "%lld%s",timestamp[i],formats[i]);
+    for (k=i+1; k < j && (bufsz +=(int)sprintf(ret + bufsz, "%0*lld%s",width[k],timestamp[k],formats[k])); k++ );
     return(ret);
 }
 

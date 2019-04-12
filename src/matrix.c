@@ -76,7 +76,6 @@ static void _matrix_display(const matrix_t *matrix, int precision)
 {
     if(!sanity_check((void *)matrix, __func__))return; 
     double real, imag;
-    char str[100] = {'\0'};
     int len = 0;
     for (int i = 0; i < matrix->rows; i++) {
         printf("[ ");
@@ -85,22 +84,26 @@ static void _matrix_display(const matrix_t *matrix, int precision)
             imag = cimag(matrix->coeff[i][j]);
             if (precision)
             {
-                len = sprintf(str, "%.*f", precision, real);
-                printf("%s ", str);
+                printf("%.*f ", precision, real);
             }
             else
             {
-                if(fabs(real) < 1e-10 && fabs(imag) < 1e-10 )
-                    len = sprintf(str, "0");
-                else if(fabs(real) < 1e-10)
-                    len = sprintf(str, "%.3gi", imag);
-                else if(fabs(imag) < 1e-10)
-                    len = sprintf(str, "%.3g", real);
-                else if(fabs(imag) > 0)    
-                    len = sprintf(str, "%.3g+%.2gi", real, imag);
-                else
-                    len = sprintf(str, "%.3g%.2gi", real, imag);
-                printf("%s", str);
+                if(fabs(real) < 1e-10 && fabs(imag) < 1e-10 ) {
+                    len = snprintf(NULL, 0, "0");
+                    printf("0");
+                } else if(fabs(real) < 1e-10) {
+                    len = snprintf(NULL, 0, "%.3gi", imag);
+                    printf("%.3gi", imag);
+                } else if(fabs(imag) < 1e-10) {
+                    len = snprintf(NULL, 0, "%.3g", real);
+                    printf("%.3g", real);
+                } else if(fabs(imag) > 0) {
+                    len = snprintf(NULL, 0, "%.3g+%.2gi", real, imag); 
+                    printf("%.3g+%.2gi", real, imag);
+                } else {
+                    len = snprintf(NULL, 0, "%.3g%.2gi", real, imag);
+                    printf("%.3g%.2gi", real, imag);
+                }
                 for (int k=0; k< 9-len; k++)printf(" ");
             }
         }
