@@ -7,23 +7,14 @@ typedef struct {
     double complex **coeff;
 } matrix_t;
 
-
 // Matrix creation functions
 matrix_t *  matrix_create(int rows, int columns);                                           // Creates a 0-filled rows*columns matrix
-matrix_t *  matrix_symetric_random(int rows, int columns);                                  // Creates a 0-filled rows*columns symetric matrix
-matrix_t *  matrix_random(int rows, int columns);                                           // Creates a random-filled rows*columns matrix (-10<Aij<10)
 matrix_t *  matrix_identity(int n);                                                         // Creates Identity matrix of rank n
 matrix_t *  matrix_permutation(int line1, int line2, int n);                                // Creates a permutation matrix of rank n for two lines
 matrix_t *  matrix_copy(const matrix_t *matrix);                                            // Copies a matrix
-matrix_t *  str2matrix(int argc, char **argv, char separator);                              // Creates a matrix from 'separator' separated numbers from 'argc' strings
-matrix_t *  file2matrix(char *filename);                                                    // Creates a matrix from a file. Lines separated by line-feed, numbers separated by spaces
 
 // Matrix destruction functions
 void        matrix_free(matrix_t *matrix);                                                  // Destroys a matrix
-
-// Matrix display function
-void        matrix_display(const matrix_t *matrix);                                         // Display matrix representation to stdout with standard precision
-void        matrix_display_exact(const matrix_t *matrix, int precision);                    // Display matrix representation to stdout with specified precision
 
 // Matrix computation functions
 

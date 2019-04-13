@@ -2,48 +2,8 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
-#include "includes/matrix.h"
-
-
-char * format_time(const long long input_time, char* format)
-{
-    const char* formats[10] = {"a","d","h","m","s","ms","µs","ns","ps","fs"};
-    const int  timescales[10] = {1,365,24,60,60,1000,1000,1000,1000,1000};
-    const int width[10] = {0,3,2,2,2,3,3,3,3,3};
-    long long timestamp[10];
-    int  scale, i, j, k;
-    ssize_t bufsz;
-    char *ret = NULL;
-    for (scale = 1; (scale <= 10) && (strcmp(format, formats[scale-1]) != 0); scale++);
-    if(scale > 10)return(NULL); // Unsupported format, you filthy rat !
-    if(input_time<=0){ // Quickly handle case 0
-        bufsz = snprintf(NULL, 0, "0%s", format);
-        ret = malloc(bufsz * sizeof(*ret));
-        if(!ret){perror("malloc");exit(0);}
-        snprintf(ret, bufsz+1, "0%s", format);
-        return(ret);
-    }
-    for (i = 0; i <= scale; i++)
-    {
-        timestamp[i] = input_time;
-        for (j = scale - 1; j > i; j--)timestamp[i] = timestamp[i]/timescales[j];
-        if(i > 0)timestamp[i] = timestamp[i]%timescales[i];
-    }
-    for (i=0; i < scale && timestamp[i] == 0; i++ );
-    for (j=scale; j > i && timestamp[j] == 0; j-- );
-    bufsz = snprintf(NULL, 0, "%lld%s",timestamp[i],formats[i]);
-    for (k=i+1; k < j && (bufsz += snprintf(NULL, 0, "%0*lld%s",width[k],timestamp[k],formats[k])); k++ );
-    ret = malloc(bufsz * sizeof(*ret));
-    if(!ret){perror("malloc");exit(0);}
-    bufsz = sprintf(ret, "%lld%s",timestamp[i],formats[i]);
-    for (k=i+1; k < j && (bufsz +=(int)sprintf(ret + bufsz, "%0*lld%s",width[k],timestamp[k],formats[k])); k++ );
-    return(ret);
-}
-
-long long mstime(void)
-{
-    return((long long)(1e3*clock()/CLOCKS_PER_SEC));
-}
+#include "matrix.h"
+#include "matrix_tools.h"
 
 int test_matrix_add_f(const matrix_t *matrix1, const matrix_t *matrix2)
 {

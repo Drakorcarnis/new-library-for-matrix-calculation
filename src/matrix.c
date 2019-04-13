@@ -5,8 +5,7 @@
 #include <errno.h>
 #include <time.h>
 #include <complex.h>
-#include "includes/matrix.h"
-
+#include "matrix.h"
 
 typedef struct {
     int nb_perm;
@@ -18,8 +17,7 @@ typedef struct {
 static int sanity_check(const void *pointer, const char *function_name);
 static int square_check(const matrix_t *matrix, const char *function_name);
 static int symetry_check(const matrix_t *matrix, const char *function_name);
-static double complex str2double(const char *str, int len);
-static void _matrix_display(const matrix_t *matrix, int exact);
+
 static plu_t * plu_create(int rank);
 static void plu_free(plu_t *plu);
 static plu_t * matrix_plu_f(const matrix_t *matrix);
@@ -27,8 +25,7 @@ static matrix_t * matrix_cholesky_f(const matrix_t *matrix);
 
 static int sanity_check(const void *pointer, const char *function_name)
 {
-    if(!pointer)
-    {
+    if(!pointer){
         fprintf(stderr, "%s: NULL pointer\n",function_name);
         return 0;
     }
@@ -37,8 +34,7 @@ static int sanity_check(const void *pointer, const char *function_name)
 
 static int square_check(const matrix_t *matrix, const char *function_name)
 {
-    if((matrix->rows != matrix->columns))
-    {
+    if((matrix->rows != matrix->columns)){
         fprintf(stderr, "%s: not square matrix\n",function_name);
         return 0;
     }
@@ -49,8 +45,7 @@ static int symetry_check(const matrix_t *matrix, const char *function_name)
 {
     for (int i = 0; i < matrix->rows; i++) {
         for (int j = 0; j < i; j++) {
-            if(matrix->coeff[i][j] != matrix->coeff[j][i])
-            {
+            if(matrix->coeff[i][j] != matrix->coeff[j][i]){
                 fprintf(stderr, "%s: not symetric matrix\n",function_name);
                 return 0;
             }
@@ -59,62 +54,10 @@ static int symetry_check(const matrix_t *matrix, const char *function_name)
     return 1;
 }
 
-static double complex str2double(const char *str, int len)
-{
-    char *s = calloc(len+1, sizeof(char));
-    if (!s){
-        perror("alloc failed");
-        return -1;
-    }
-    memcpy(s, str, len);
-    double complex ret = strtod(s,NULL);
-    free(s);
-    return ret;
-}
-
-static void _matrix_display(const matrix_t *matrix, int precision)
-{
-    if(!sanity_check((void *)matrix, __func__))return; 
-    double real, imag;
-    int len = 0;
-    for (int i = 0; i < matrix->rows; i++) {
-        printf("[ ");
-        for (int j = 0; j < matrix->columns; j++){
-            real = creal(matrix->coeff[i][j]);
-            imag = cimag(matrix->coeff[i][j]);
-            if (precision)
-            {
-                printf("%.*f ", precision, real);
-            }
-            else
-            {
-                if(fabs(real) < 1e-10 && fabs(imag) < 1e-10 ) {
-                    len = snprintf(NULL, 0, "0");
-                    printf("0");
-                } else if(fabs(real) < 1e-10) {
-                    len = snprintf(NULL, 0, "%.3gi", imag);
-                    printf("%.3gi", imag);
-                } else if(fabs(imag) < 1e-10) {
-                    len = snprintf(NULL, 0, "%.3g", real);
-                    printf("%.3g", real);
-                } else if(fabs(imag) > 0) {
-                    len = snprintf(NULL, 0, "%.3g+%.2gi", real, imag); 
-                    printf("%.3g+%.2gi", real, imag);
-                } else {
-                    len = snprintf(NULL, 0, "%.3g%.2gi", real, imag);
-                    printf("%.3g%.2gi", real, imag);
-                }
-                for (int k=0; k< 9-len; k++)printf(" ");
-            }
-        }
-        printf("]\n");
-    }
-}
-
 static plu_t * plu_create(int rank){
     plu_t *plu = malloc(sizeof(plu_t));
     if (!plu){
-        perror("alloc failed");
+        perror("alloc");
         return NULL;
     }
     plu->P = matrix_identity(rank);
@@ -153,34 +96,8 @@ failed_coeff_elt:
 failed_coeff:
     free(matrix);
 failed_matrix:
-    perror("alloc failed");
+    perror("alloc");
     return NULL;
-}
-
-matrix_t * matrix_random(int rows, int columns)
-{
-    matrix_t *matrix = matrix_create(rows, columns);
-    srand((unsigned int)time(NULL));
-    for (int i = 0; i < matrix->rows; i++) {
-        for (int j = 0; j < matrix->columns; j++) {
-            matrix->coeff[i][j] = (double complex)(pow(-1.0, rand())*(rand()%10));
-        }
-    }
-    return matrix;
-}
-
-matrix_t * matrix_symetric_random(int rows, int columns)
-{
-    double complex random;
-    matrix_t *matrix = matrix_create(rows, columns);
-    srand((unsigned int)time(NULL));
-    for (int i = 0; i < matrix->rows; i++) {
-        for (int j = 0; j <= i; j++) {
-            random = (double complex)(pow(-1.0, rand())*(rand()%10));
-            matrix->coeff[i][j] = matrix->coeff[j][i] = random;
-        }
-    }
-    return matrix;
 }
 
 matrix_t * matrix_identity(int n)
@@ -194,8 +111,7 @@ matrix_t * matrix_permutation(int line1, int line2, int n)
 {
     double complex tmp;
     matrix_t * matrix = matrix_identity(n);
-    for (int i = 0; i < n; i++)
-    {
+    for (int i = 0; i < n; i++){
         tmp = matrix->coeff[line1][i];
         matrix->coeff[line1][i] = matrix->coeff[line2][i];
         matrix->coeff[line2][i] = tmp;
@@ -216,86 +132,6 @@ matrix_t * matrix_copy(const matrix_t *matrix)
     return copy;
 }
 
-matrix_t * str2matrix(int argc, char **argv, char separator)
-{
-    int i, j, columns = 0, len, trigger, flag = 0, count;
-    matrix_t *matrix = NULL;
-    for (i = 0; i < argc; i++) {
-        count = 0;
-        for (j = 0; argv[i][j]; j++){
-            if(argv[i][j] != separator && argv[i][j] != '\t' && argv[i][j] != '\n'){
-                if(!flag)count++;
-                flag = 1;
-            } else {
-                flag = 0;
-            }
-        }
-        if (count>columns)columns=count;
-    }
-    matrix = matrix_create(argc, columns);
-    if(!sanity_check((void *)matrix, __func__))return NULL; 
-    for (i = 0; i < matrix->rows; i++) {
-        len=0;
-        flag=0;
-        trigger=0;
-        for (j = 0; j <= (int)strlen(argv[i]); j++) {
-            if(argv[i][j] != separator && argv[i][j] != '\t' && argv[i][j] != '\n'){
-                if(!flag)trigger=j;
-                flag = 1;
-            } else {
-                if(flag)matrix->coeff[i][len++]=str2double(argv[i]+trigger,j-trigger);
-                flag = 0;
-            }
-        }
-        if(trigger < j && flag && len < columns)matrix->coeff[i][len]=str2double(argv[i]+trigger,j-trigger-1);
-    }
-    return matrix;
-}
-
-matrix_t * file2matrix(char *filename)
-{
-    FILE *fp = fopen(filename, "r");
-    if(!fp){
-        perror("alloc failed");
-        return NULL;
-    }
-    int argc = 0, i;
-    char *line = NULL;
-    size_t len = 0;
-    ssize_t read;
-    matrix_t *matrix = NULL;
-    char **argv = malloc(sizeof(char*));
-    if(!argv){
-        perror("alloc failed");
-        return NULL;
-    }
-    while ((read = getline(&line, &len, fp)) != -1) {
-        if (read > 1 || ((read == 1) && (strcmp(line, "\n") != 0))){
-            argv = realloc(argv, (argc + 1) * sizeof(char*));
-            if(!argv){
-                perror("alloc failed");
-                goto finally;
-            }
-            argv[argc] = calloc(read+1, sizeof(char));
-            if(!argv[argc]){
-                perror("alloc failed");
-                goto finally;
-            }
-            strncpy(argv[argc++], line, read);
-        }    
-    }
-    matrix = str2matrix(argc, argv, ' ');
-finally:
-    for (i=0; i<argc; i++)
-    {
-        free(argv[i]);
-    }
-    free(argv);
-    if(line)free(line);
-    fclose(fp);
-    return matrix;
-}
-
 void matrix_free(matrix_t *matrix)
 {
     if(!sanity_check(matrix, __func__))return; 
@@ -306,17 +142,6 @@ void matrix_free(matrix_t *matrix)
     free(matrix->coeff);
     free(matrix); 
     matrix = NULL;
-}
-
-// Matrix display functions
-
-void matrix_display(const matrix_t *matrix)
-{
-    _matrix_display(matrix, 0);
-}
-void matrix_display_exact(const matrix_t *matrix, int precision)
-{
-    _matrix_display(matrix, precision);
 }
 
 // Matrix computation functions
@@ -345,7 +170,7 @@ matrix_t * matrix_add_f(const matrix_t *matrix1, const matrix_t *matrix2)
     matrix_t *add_matrix = matrix_create(matrix1->rows, matrix1->columns);
     for (i = 0; i < add_matrix->rows; i++) {
         for (j = 0; j < add_matrix->columns; j++) {
-                add_matrix->coeff[i][j] = matrix1->coeff[i][j] + matrix2->coeff[i][j];
+            add_matrix->coeff[i][j] = matrix1->coeff[i][j] + matrix2->coeff[i][j];
         }
     }
     return add_matrix;
@@ -358,7 +183,7 @@ matrix_t * matrix_mult_scalar_f(const matrix_t *matrix, double complex lambda)
     matrix_t *mult_matrix = matrix_create(matrix->rows, matrix->columns);
     for (i = 0; i < matrix->rows; i++) {
         for (j = 0; j < matrix->columns; j++) {
-                mult_matrix->coeff[i][j]=lambda * matrix->coeff[i][j];
+            mult_matrix->coeff[i][j]=lambda * matrix->coeff[i][j];
         }
     }
     return mult_matrix;
@@ -445,10 +270,8 @@ matrix_t * matrix_solve_diag_sup(const matrix_t *A, const matrix_t *B)
     int n = A->rows;
     int m = B->columns;
     matrix_t *X = matrix_create(n, n);
-    for (int i = 0; i < m; i++)
-    {
-        for (int j = n - 1; j >= 0; j--)
-        {
+    for (int i = 0; i < m; i++){
+        for (int j = n - 1; j >= 0; j--){
             X->coeff[j][i] = B->coeff[j][i];
             for (int k = n - 1; k > j; k--)X->coeff[j][i] =  X->coeff[j][i] - X->coeff[k][i] * A->coeff[j][k];
             X->coeff[j][i] = X->coeff[j][i] / A->coeff[j][j];
@@ -510,10 +333,8 @@ matrix_t * matrix_com_f(const matrix_t *matrix)
     double complex sign = 0;
     matrix_t *shrinked_matrix = NULL;
     matrix_t *co_matrix = matrix_create(matrix->rows, matrix->columns);
-    for (int i = 0; i < co_matrix->rows; i++)
-    {
-        for (int j = 0; j < co_matrix->columns; j++)
-        {
+    for (int i = 0; i < co_matrix->rows; i++){
+        for (int j = 0; j < co_matrix->columns; j++){
             shrinked_matrix=matrix_shrink_f(matrix, i, j);
             sign = (int)pow(-1.0,(double complex)(i+j));
             co_matrix->coeff[i][j] = sign * matrix_det_raw_f(shrinked_matrix);
@@ -545,8 +366,7 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
     double complex sum, tmp;
     for (int i = 0; i < n; i++)
     {
-        for (int j = i; j < n; j++)
-        {
+        for (int j = i; j < n; j++){
             sum = 0;
             for (int k = 0; k < i; k++)sum += L->coeff[j][k] * U->coeff[k][i];
             L->coeff[j][i] = A->coeff[j][i] - sum;
@@ -562,14 +382,12 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
             matrix_free(plu->P);
             plu->P = perm_mult;
             plu->nb_perm+=1;
-            for (int j = 0; j < n; j++)
-            {
+            for (int j = 0; j < n; j++){
                 tmp = A->coeff[i][j];
                 A->coeff[i][j] = A->coeff[p][j];
                 A->coeff[p][j] = tmp;
             }
-            for (int j = 0; j < n; j++)
-            {
+            for (int j = 0; j < n; j++){
                 tmp = L->coeff[i][j];
                 L->coeff[i][j] = L->coeff[p][j];
                 L->coeff[p][j] = tmp;
@@ -578,8 +396,7 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
         for (int j = i+1; j < n; j++)
         {
             sum = 0;
-            for (int k = 0; k < i; k++)
-            {
+            for (int k = 0; k < i; k++){
                 sum += L->coeff[i][k] * U->coeff[k][j];
             }  
             U->coeff[i][j] = (A->coeff[i][j] - sum) / L->coeff[i][i];
@@ -641,13 +458,11 @@ static matrix_t * matrix_cholesky_f(const matrix_t *matrix)
     int n = matrix->rows;
     double complex sum;
     matrix_t *L = matrix_create(n, n); 
-    for (int i = 0; i < n; i++)
-    {
+    for (int i = 0; i < n; i++){
         sum = 0;
         for (int k = 0; k < i; k++)sum += L->coeff[i][k] * L->coeff[i][k];
         L->coeff[i][i] = csqrt(matrix->coeff[i][i] - sum);
-        for (int j = i+1; j < n; j++)
-        {
+        for (int j = i+1; j < n; j++){
             sum = 0;
             for (int k = 0; k < i; k++)sum += L->coeff[i][k] * L->coeff[j][k];
             L->coeff[j][i] = (matrix->coeff[i][j] - sum)/L->coeff[i][i];
