@@ -9,14 +9,24 @@
 
 static double complex str2double(const char *str, int len)
 {
-    char *s = calloc(len+1, sizeof(char));
-    if (!s){
+    char *num = calloc(len+1, sizeof(char));
+    char *den = calloc(len+1, sizeof(char));
+    if ((!num) || (!den)){
         perror("alloc failed");
         return -1;
     }
-    memcpy(s, str, len);
-    double complex ret = strtod(s,NULL);
-    free(s);
+    den[0] = '1';
+    for (int i = 0; i < len; i++) {
+        if (str[i] == '/'){
+            memcpy(den, str+i+1, len-i-1);
+            break;
+        } else {
+            num[i] = str[i];
+        }
+    }
+    double complex ret = strtod(num,NULL)/strtod(den,NULL);
+    free(num);
+    free(den);
     return ret;
 }
 
@@ -24,13 +34,14 @@ static void _matrix_display(const matrix_t *matrix, int precision)
 {
     double real, imag;
     int len = 0;
-    for (int i = 0; i < matrix->rows; i++) {
-        printf("[ ");
-        for (int j = 0; j < matrix->columns; j++){
+    for (unsigned int i = 0; i < matrix->rows; i++) {
+        if (!precision)
+            printf("[ ");
+        for (unsigned int j = 0; j < matrix->columns; j++){
             real = creal(matrix->coeff[i][j]);
             imag = cimag(matrix->coeff[i][j]);
             if (precision){
-                printf("%.*f ", precision, real);
+                printf("%.*g ", precision, real);
                 continue;
             }
             if(fabs(real) < 1e-10 && fabs(imag) < 1e-10 ) {
@@ -51,7 +62,9 @@ static void _matrix_display(const matrix_t *matrix, int precision)
             }
             for (int k=0; k< 10-len; k++)printf(" ");
         }
-        printf("]\n");
+        if (!precision)
+            printf("]");
+        printf("\n");
     }
 }
 
@@ -59,8 +72,8 @@ matrix_t * matrix_random(int rows, int columns)
 {
     matrix_t *matrix = matrix_create(rows, columns);
     srand((unsigned int)time(NULL));
-    for (int i = 0; i < matrix->rows; i++) {
-        for (int j = 0; j < matrix->columns; j++) {
+    for (unsigned int i = 0; i < matrix->rows; i++) {
+        for (unsigned int j = 0; j < matrix->columns; j++) {
             matrix->coeff[i][j] = (double complex)(pow(-1.0, rand())*(rand()%10));
         }
     }
@@ -72,8 +85,8 @@ matrix_t * matrix_symetric_random(int rows, int columns)
     double complex random;
     matrix_t *matrix = matrix_create(rows, columns);
     srand((unsigned int)time(NULL));
-    for (int i = 0; i < matrix->rows; i++) {
-        for (int j = 0; j <= i; j++) {
+    for (unsigned int i = 0; i < matrix->rows; i++) {
+        for (unsigned int j = 0; j <= i; j++) {
             random = (double complex)(pow(-1.0, rand())*(rand()%10));
             matrix->coeff[i][j] = matrix->coeff[j][i] = random;
         }
@@ -83,13 +96,14 @@ matrix_t * matrix_symetric_random(int rows, int columns)
 
 matrix_t * str2matrix(int argc, char **argv, char separator)
 {
-    int i, j, columns = 0, len, trigger, flag = 0, count;
+    unsigned int i, j, columns = 0, len, trigger, flag = 0, count;
     matrix_t *matrix = NULL;
-    for (i = 0; i < argc; i++) {
+    for (i = 0; i < (unsigned int)argc; i++) {
         count = 0;
         for (j = 0; argv[i][j]; j++){
-            if(argv[i][j] != separator && argv[i][j] != '\t' && argv[i][j] != '\n'){
-                if(!flag)count++;
+            if(argv[i][j] != separator && argv[i][j] != '\t' && argv[i][j] != '\n' && argv[i][j] != '\r'){
+                if(!flag)
+                    count++;
                 flag = 1;
             } else {
                 flag = 0;
@@ -102,8 +116,8 @@ matrix_t * str2matrix(int argc, char **argv, char separator)
         len=0;
         flag=0;
         trigger=0;
-        for (j = 0; j <= (int)strlen(argv[i]); j++) {
-            if(argv[i][j] != separator && argv[i][j] != '\t' && argv[i][j] != '\n'){
+        for (j = 0; j <= (unsigned int)strlen(argv[i]); j++) {
+            if(argv[i][j] != separator && argv[i][j] != '\t' && argv[i][j] != '\n' && argv[i][j] != '\r'){
                 if(!flag)trigger=j;
                 flag = 1;
             } else {

@@ -7,12 +7,12 @@
 #include "matrix_tools.h"
 
 #define DATA_PATH "/home/Drakorcarnis/new_library/src/data"
-#define PRECISION 15
+#define PRECISION 14
 int precision = PRECISION;
 
-#define IN_1MATRIX_OUT_DOUBLE       matrix_det_plu_f,   matrix_det_cholesky_f,    matrix_det_raw_f 
-#define IN_1MATRIX_OUT_DOUBLE_IN    "matrix",           "matrix_sym"    ,         "matrix"          
-#define IN_1MATRIX_OUT_DOUBLE_OUT   1.50927e+09,        1     ,                   1.50927e+09,       
+#define IN_1MATRIX_OUT_DOUBLE       matrix_det_plu_f,   matrix_det_cholesky_f,    matrix_det_raw_f ,
+#define IN_1MATRIX_OUT_DOUBLE_IN    "matrix",           "matrix_sym"    ,         "matrix",         
+#define IN_1MATRIX_OUT_DOUBLE_OUT   -18570.0,           1,                          -18570.0,       
 #define IN_1MATRIX_OUT_DOUBLE_NAME  "matrix_det_plu_f", "matrix_det_cholesky_f",  "matrix_det_raw_f",
 
 #define IN_1MATRIX_OUT_MATRIX       matrix_transp_f,    matrix_inverse_plu_f,   matrix_inverse_cholesky_f,   matrix_inverse_raw_f,  
@@ -51,7 +51,7 @@ typedef struct {
     long long mstime;
 }result_t;
 
-void process_result(result_t res)
+static void process_result(result_t res)
 {
     char *formatted_time = format_time(res.mstime, "ms");
     if (res.result)
@@ -65,8 +65,8 @@ void process_result(result_t res)
 static int test_matrix_equality(const matrix_t *matrix1, const matrix_t *matrix2){
     // matrix_display(matrix1);printf("\n");matrix_display(matrix2);
     if((matrix1->rows != matrix2->rows) || (matrix1->columns != matrix2->columns))return 0;
-    for (int i=0; i<matrix1->rows; i++){
-        for (int j=0; j<matrix1->columns; j++){
+    for (unsigned int i=0; i<matrix1->rows; i++){
+        for (unsigned int j=0; j<matrix1->columns; j++){
             if(fabs(creal(matrix1->coeff[i][j] - matrix2->coeff[i][j])) > pow(10, -precision))return 0;
             if(fabs(cimag(matrix1->coeff[i][j] - matrix2->coeff[i][j])) > pow(10, -precision))return 0;
         }
@@ -74,7 +74,7 @@ static int test_matrix_equality(const matrix_t *matrix1, const matrix_t *matrix2
     return 1;
 }
 
-int test_function_in_matrix_out_double_f(double complex(*function)(const matrix_t*), matrix_t* matrix, double complex expected, char *test_name)
+static int test_function_in_matrix_out_double_f(double complex(*function)(const matrix_t*), matrix_t* matrix, double complex expected, char *test_name)
 {
     long long time = mstime();
     double complex ret = (function)(matrix);
@@ -89,7 +89,7 @@ int test_function_in_matrix_out_double_f(double complex(*function)(const matrix_
     return(res.result);
 }
 
-int test_function_in_matrix_out_matrix_f(matrix_t*(*function)(const matrix_t*), matrix_t* matrix, matrix_t* expected, char *test_name)
+static int test_function_in_matrix_out_matrix_f(matrix_t*(*function)(const matrix_t*), matrix_t* matrix, matrix_t* expected, char *test_name)
 {
     long long time = mstime();
     matrix_t *ret = (function)(matrix);
@@ -108,7 +108,7 @@ int test_function_in_matrix_out_matrix_f(matrix_t*(*function)(const matrix_t*), 
     return(res.result);
 }
 
-int test_function_in_2matrix_out_matrix_f(matrix_t*(*function)(const matrix_t*, const matrix_t*), matrix_t* matrix1, matrix_t* matrix2, matrix_t* expected, char *test_name)
+static int test_function_in_2matrix_out_matrix_f(matrix_t*(*function)(const matrix_t*, const matrix_t*), matrix_t* matrix1, matrix_t* matrix2, matrix_t* expected, char *test_name)
 {
     long long time = mstime();
     matrix_t *ret = (function)(matrix1, matrix2);
@@ -129,7 +129,7 @@ int test_function_in_2matrix_out_matrix_f(matrix_t*(*function)(const matrix_t*, 
     return(res.result);
 }
 
-int test_function_in_matrix_double_out_matrix_f(matrix_t*(*function)(const matrix_t*, double complex), matrix_t* matrix, double complex val, matrix_t* expected, char *test_name)
+static int test_function_in_matrix_double_out_matrix_f(matrix_t*(*function)(const matrix_t*, double complex), matrix_t* matrix, double complex val, matrix_t* expected, char *test_name)
 {
     long long time = mstime();
     matrix_t *ret = (function)(matrix, val);
@@ -148,7 +148,7 @@ int test_function_in_matrix_double_out_matrix_f(matrix_t*(*function)(const matri
     return(res.result);
 }
 
-int test_function_in_matrix_int_out_matrix_f(matrix_t*(*function)(const matrix_t*, int), matrix_t* matrix, int val, matrix_t* expected, char *test_name)
+static int test_function_in_matrix_int_out_matrix_f(matrix_t*(*function)(const matrix_t*, int), matrix_t* matrix, int val, matrix_t* expected, char *test_name)
 {
     long long time = mstime();
     matrix_t *ret = (function)(matrix, val);
@@ -167,7 +167,7 @@ int test_function_in_matrix_int_out_matrix_f(matrix_t*(*function)(const matrix_t
     return(res.result);
 }
 
-int test_function_in_matrix_2int_out_matrix_f(matrix_t*(*function)(const matrix_t*, int, int), matrix_t* matrix, int val0, int val1, matrix_t* expected, char *test_name)
+static int test_function_in_matrix_2int_out_matrix_f(matrix_t*(*function)(const matrix_t*, unsigned int, unsigned int), matrix_t* matrix, int val0, int val1, matrix_t* expected, char *test_name)
 {
     long long time = mstime();
     matrix_t *ret = (function)(matrix, val0, val1);
@@ -186,7 +186,62 @@ int test_function_in_matrix_2int_out_matrix_f(matrix_t*(*function)(const matrix_
     return(res.result);
 }
 
-matrix_t** chartab2matrixtab(char ** filetab, ssize_t size, char *data_path)
+static int test_error_cases(void)
+{
+    matrix_t *matrix1 = matrix_create(3,3);
+    matrix_t *matrix2 = matrix_create(2,5);
+    long long time = mstime();
+    matrix_t *ret = matrix_add_f(matrix1, matrix2);
+    if(ret != NULL){
+        matrix_free(ret);
+        process_result((result_t){"test_not_addable_matrix", 0, 0});
+        return 0;
+    }
+    ret = matrix_mult_f(matrix1, matrix2);
+    if(ret != NULL){
+        matrix_free(ret);
+        process_result((result_t){"test_not_multiplicable_matrix", 0, 0});
+        return 0;
+    }
+    ret = matrix_inverse_raw_f(matrix1);
+    if(ret != NULL){
+        matrix_free(ret);
+        process_result((result_t){"test_not_inversible_matrix", 0, 0});
+        return 0;
+    }
+    ret = matrix_pow_f(matrix2, 15);
+    if(ret != NULL){
+        matrix_free(ret);
+        process_result((result_t){"test_not_square_matrix", 0, 0});
+        return 0;
+    }
+    matrix1->coeff[0][1] = 1.0;
+    ret = matrix_inverse_cholesky_f(matrix1);
+    if(ret != NULL){
+        matrix_free(ret);
+        process_result((result_t){"test_not_symetric_matrix", 0, 0});
+        return 0;
+    }
+    ret = matrix_inverse_cholesky_f((matrix_t *)NULL);
+    if(ret != NULL){
+        matrix_free(ret);
+        process_result((result_t){"test_not_sane_matrix", 0, 0});
+        return 0;
+    }
+    ret = matrix_create(1,4135583743);
+    if(ret != NULL){
+        free(ret);
+        process_result((result_t){"test_failed_alloc", 0, 0});
+        return 0;
+    }
+    long long time2 = mstime();
+    process_result((result_t){"test_error_cases", 1, time2 - time});
+    matrix_free(matrix1);
+    matrix_free(matrix2);
+    return(1);
+}
+
+static matrix_t** chartab2matrixtab(char ** filetab, ssize_t size, char *data_path)
 {
     matrix_t** matrixtab = malloc(sizeof(matrix_t*) * size);
     for (int i = 0; i < size; i++)
@@ -200,9 +255,9 @@ matrix_t** chartab2matrixtab(char ** filetab, ssize_t size, char *data_path)
     return matrixtab;
 }
 
-void free_matrixtab(matrix_t** matrixtab, ssize_t size)
+static void free_matrixtab(matrix_t** matrixtab, ssize_t size)
 {
-    for (int i = 0; i < size; i++)free(matrixtab[i]);
+    for (int i = 0; i < size; i++)matrix_free(matrixtab[i]);
     free(matrixtab);
     matrixtab = NULL;
 }
@@ -221,7 +276,7 @@ int main(int argc, char **argv) {
     matrix_t** test_function_in_1matrix_out_double_in_input = chartab2matrixtab(test_function_in_1matrix_out_double_in, size, data_path);
     double complex test_function_in_1matrix_out_double_out[] = {IN_1MATRIX_OUT_DOUBLE_OUT}; 
     for (int i = 0; i < size; i++)
-    if(!test_function_in_matrix_out_double_f(test_function_in_1matrix_out_double_f[i],test_function_in_1matrix_out_double_in_input[i], test_function_in_1matrix_out_double_out[i], test_function_in_1matrix_out_double_name[i]))ret=1;    
+        if(!test_function_in_matrix_out_double_f(test_function_in_1matrix_out_double_f[i],test_function_in_1matrix_out_double_in_input[i], test_function_in_1matrix_out_double_out[i], test_function_in_1matrix_out_double_name[i]))ret=1;    
     free_matrixtab(test_function_in_1matrix_out_double_in_input, size);
     
     matrix_t*(*test_function_in_1matrix_out_matrix_f[])(const matrix_t*) = {IN_1MATRIX_OUT_MATRIX};
@@ -234,7 +289,7 @@ int main(int argc, char **argv) {
     size = sizeof(test_function_in_1matrix_out_matrix_out)/sizeof(char*);
     test_function_in_1matrix_out_matrix_out_output = chartab2matrixtab(test_function_in_1matrix_out_matrix_out, size, data_path);
     for (int i = 0; i < size; i++)
-    if(!test_function_in_matrix_out_matrix_f(test_function_in_1matrix_out_matrix_f[i],test_function_in_1matrix_out_matrix_in_input[i], test_function_in_1matrix_out_matrix_out_output[i], test_function_in_1matrix_out_matrix_name[i]))ret=1; 
+        if(!test_function_in_matrix_out_matrix_f(test_function_in_1matrix_out_matrix_f[i],test_function_in_1matrix_out_matrix_in_input[i], test_function_in_1matrix_out_matrix_out_output[i], test_function_in_1matrix_out_matrix_name[i]))ret=1; 
     free_matrixtab(test_function_in_1matrix_out_matrix_in_input, size);  
     free_matrixtab(test_function_in_1matrix_out_matrix_out_output, size);  
     
@@ -251,10 +306,10 @@ int main(int argc, char **argv) {
     size = sizeof(test_function_in_2matrix_out_matrix_out)/sizeof(char*);
     test_function_in_2matrix_out_matrix_out_output = chartab2matrixtab(test_function_in_2matrix_out_matrix_out, size, data_path);
     for (int i = 0; i < size; i++)
-    if(!test_function_in_2matrix_out_matrix_f(test_function_in_2matrix_out_matrix[i],test_function_in_2matrix_out_matrix_in0_input[i], test_function_in_2matrix_out_matrix_in1_input[i], test_function_in_2matrix_out_matrix_out_output[i], test_function_in_2matrix_out_matrix_name[i]))ret=1;  
-    free_matrixtab(test_function_in_2matrix_out_matrix_in0_input, size);  
-    free_matrixtab(test_function_in_2matrix_out_matrix_in1_input, size);  
-    free_matrixtab(test_function_in_2matrix_out_matrix_out_output, size);  
+        if(!test_function_in_2matrix_out_matrix_f(test_function_in_2matrix_out_matrix[i],test_function_in_2matrix_out_matrix_in0_input[i], test_function_in_2matrix_out_matrix_in1_input[i], test_function_in_2matrix_out_matrix_out_output[i], test_function_in_2matrix_out_matrix_name[i]))ret=1;
+    free_matrixtab(test_function_in_2matrix_out_matrix_in0_input, size);
+    free_matrixtab(test_function_in_2matrix_out_matrix_in1_input, size);
+    free_matrixtab(test_function_in_2matrix_out_matrix_out_output, size);
     
     matrix_t*(*test_function_in_1matrix_double_out_matrix_f[])(const matrix_t*, double complex) = {IN_1MATRIX_1DOUBLE_OUT_MATRIX};
     char* test_function_in_1matrix_double_out_matrix_name[] = {IN_1MATRIX_1DOUBLE_OUT_MATRIX_NAME};
@@ -267,7 +322,7 @@ int main(int argc, char **argv) {
     size = sizeof(test_function_in_1matrix_double_out_matrix_out)/sizeof(char*);
     test_function_in_1matrix_double_out_matrix_out_output = chartab2matrixtab(test_function_in_1matrix_double_out_matrix_out, size, data_path);
     for (int i = 0; i < size; i++)
-    if(!test_function_in_matrix_double_out_matrix_f(test_function_in_1matrix_double_out_matrix_f[i],test_function_in_1matrix_double_out_matrix_in0_input[i], test_function_in_1matrix_double_out_matrix_in1[i], test_function_in_1matrix_double_out_matrix_out_output[i], test_function_in_1matrix_double_out_matrix_name[i]))ret=1;
+        if(!test_function_in_matrix_double_out_matrix_f(test_function_in_1matrix_double_out_matrix_f[i],test_function_in_1matrix_double_out_matrix_in0_input[i], test_function_in_1matrix_double_out_matrix_in1[i], test_function_in_1matrix_double_out_matrix_out_output[i], test_function_in_1matrix_double_out_matrix_name[i]))ret=1;
     free_matrixtab(test_function_in_1matrix_double_out_matrix_in0_input, size);  
     free_matrixtab(test_function_in_1matrix_double_out_matrix_out_output, size);   
     
@@ -282,11 +337,11 @@ int main(int argc, char **argv) {
     size = sizeof(test_function_in_1matrix_1int_out_matrix_out)/sizeof(char*);
     test_function_in_1matrix_1int_out_matrix_out_output = chartab2matrixtab(test_function_in_1matrix_1int_out_matrix_out, size, data_path);
     for (int i = 0; i < size; i++)
-    if(!test_function_in_matrix_int_out_matrix_f(test_function_in_1matrix_1int_out_matrix_f[i],test_function_in_1matrix_1int_out_matrix_in0_input[i], test_function_in_1matrix_1int_out_matrix_in1[i], test_function_in_1matrix_1int_out_matrix_out_output[i], test_function_in_1matrix_1int_out_matrix_name[i]))ret=1; 
+        if(!test_function_in_matrix_int_out_matrix_f(test_function_in_1matrix_1int_out_matrix_f[i],test_function_in_1matrix_1int_out_matrix_in0_input[i], test_function_in_1matrix_1int_out_matrix_in1[i], test_function_in_1matrix_1int_out_matrix_out_output[i], test_function_in_1matrix_1int_out_matrix_name[i]))ret=1; 
     free_matrixtab(test_function_in_1matrix_1int_out_matrix_in0_input, size);  
     free_matrixtab(test_function_in_1matrix_1int_out_matrix_out_output, size);  
     
-    matrix_t*(*test_function_in_1matrix_2int_out_matrix_f[])(const matrix_t*, int, int) = {IN_1MATRIX_2INT_OUT_MATRIX};
+    matrix_t*(*test_function_in_1matrix_2int_out_matrix_f[])(const matrix_t*, unsigned int, unsigned int) = {IN_1MATRIX_2INT_OUT_MATRIX};
     char* test_function_in_1matrix_2int_out_matrix_name[] = {IN_1MATRIX_2INT_OUT_MATRIX_NAME};
     char* test_function_in_1matrix_2int_out_matrix_in0[] = {IN_1MATRIX_2INT_OUT_MATRIX_IN0};
     size = sizeof(test_function_in_1matrix_2int_out_matrix_in0)/sizeof(char*);
@@ -298,9 +353,11 @@ int main(int argc, char **argv) {
     size = sizeof(test_function_in_1matrix_2int_out_matrix_out)/sizeof(char*);
     test_function_in_1matrix_2int_out_matrix_out_output = chartab2matrixtab(test_function_in_1matrix_2int_out_matrix_out, size, data_path);
     for (int i = 0; i < size; i++)
-    if(!test_function_in_matrix_2int_out_matrix_f(test_function_in_1matrix_2int_out_matrix_f[i],test_function_in_1matrix_2int_out_matrix_in0_input[i],test_function_in_1matrix_2int_out_matrix_in1[i], test_function_in_1matrix_2int_out_matrix_in2[i], test_function_in_1matrix_2int_out_matrix_out_output[i], test_function_in_1matrix_2int_out_matrix_name[i]))ret=1; 
+        if(!test_function_in_matrix_2int_out_matrix_f(test_function_in_1matrix_2int_out_matrix_f[i],test_function_in_1matrix_2int_out_matrix_in0_input[i],test_function_in_1matrix_2int_out_matrix_in1[i], test_function_in_1matrix_2int_out_matrix_in2[i], test_function_in_1matrix_2int_out_matrix_out_output[i], test_function_in_1matrix_2int_out_matrix_name[i]))ret=1; 
     free_matrixtab(test_function_in_1matrix_2int_out_matrix_in0_input, size);  
     free_matrixtab(test_function_in_1matrix_2int_out_matrix_out_output, size); 
     
+    if(!test_error_cases())ret=1;
+    ret=0;
     return ret;
 }

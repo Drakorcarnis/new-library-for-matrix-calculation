@@ -2,15 +2,15 @@
 #define MATRIX
 #include <complex.h>
 typedef struct {
-    int rows;
-    int columns;
+    unsigned int rows;
+    unsigned int columns;
     double complex **coeff;
 } matrix_t;
 
 // Matrix creation functions
-matrix_t *  matrix_create(int rows, int columns);                                           // Creates a 0-filled rows*columns matrix
-matrix_t *  matrix_identity(int n);                                                         // Creates Identity matrix of rank n
-matrix_t *  matrix_permutation(int line1, int line2, int n);                                // Creates a permutation matrix of rank n for two lines
+matrix_t *  matrix_create(unsigned int rows, unsigned int columns);                                           // Creates a 0-filled rows*columns matrix
+matrix_t *  matrix_identity(unsigned int n);                                                         // Creates Identity matrix of rank n
+matrix_t *  matrix_permutation(unsigned int line1, unsigned int line2, unsigned int n);                                // Creates a permutation matrix of rank n for two lines
 matrix_t *  matrix_copy(const matrix_t *matrix);                                            // Copies a matrix
 
 // Matrix destruction functions
@@ -24,7 +24,7 @@ matrix_t *  matrix_add_f(const matrix_t *matrix1, const matrix_t *matrix2);     
 matrix_t *  matrix_mult_scalar_f(const matrix_t *matrix, double complex lambda);            // Return λ * matrix
 matrix_t *  matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2);                // Return matrix1 * matrix2
 matrix_t *  matrix_pow_f(const matrix_t *matrix, int pow);                                  // Return matrix^pow
-matrix_t *  matrix_shrink_f(const matrix_t *matrix, int skipped_row, int skipped_column);   // Return copy of matrix without 'skipped_row' and 'skipped_column'
+matrix_t *  matrix_shrink_f(const matrix_t *matrix, unsigned int skipped_row, unsigned int skipped_column);   // Return copy of matrix without 'skipped_row' and 'skipped_column'
 matrix_t *  matrix_solve_diag_inf(const matrix_t *A, const matrix_t *B);                    // Resolve AX=B with A being an inferior-diagonal matrix. Return X
 matrix_t *  matrix_solve_diag_sup(const matrix_t *A, const matrix_t *B);                    // Resolve AX=B with A being an superior-diagonal matrix. Return X
 

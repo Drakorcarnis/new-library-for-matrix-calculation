@@ -28,7 +28,7 @@ DBGDIR = $(BINDIR)/debug
 LIBDBGDIR = $(DBGDIR)/lib
 LIBDBGEXE = $(LIBDBGDIR)/$(SO)
 LIBDBGOBJS = $(addprefix $(LIBDBGDIR)/, $(OBJS))
-DBGCFLAGS = -g -O0 -DDEBUG --coverage
+DBGCFLAGS = -g -O0 -DDEBUG --coverage -pg
 DBGLDFLAGS = -L$(DBGDIR)/lib -lmatrix
 $(LIBDBGDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES)
@@ -93,24 +93,24 @@ $(LIBRELEXE): $(LIBRELOBJS)
 #
 testdebug: $(TESTDBGEXE)
 
-$(TESTDBGEXE): $(TESTDBGOBJS) debug
-	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(TESTDBGEXE) $< $(DBGLDFLAGS)
+$(TESTDBGEXE): $(TESTDBGOBJS)
+	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(TESTDBGEXE) $^ $(DBGLDFLAGS)
 
 #
 # Release test rules
 #
 testrelease: $(TESTRELEXE)
 
-$(TESTRELEXE): $(TESTRELOBJS) release
-	$(CC) $(CFLAGS) $(RELCFLAGS) -o $(TESTRELEXE) $< $(RELLDFLAGS)
+$(TESTRELEXE): $(TESTRELOBJS)
+	$(CC) $(CFLAGS) $(RELCFLAGS) -o $(TESTRELEXE) $^ $(RELLDFLAGS)
 
 #
 # Regression rules
 #
 reg: $(REGEXE)
 
-$(REGEXE): $(REGOBJS) debug
-	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(REGEXE) $< $(DBGLDFLAGS) $(LDFLAGS)
+$(REGEXE): $(REGOBJS)
+	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(REGEXE) $^ $(DBGLDFLAGS) $(LDFLAGS)
 
 #
 # Other rules
@@ -121,25 +121,26 @@ prep:
 remake: clean all
 
 lcov: reg
+	@rm -f $(LIBDBGDIR)/*.gcda $(DBGDIR)/*.gcda
 	@LD_LIBRARY_PATH="$(LIBDBGDIR)" $(REGEXE)
-	@rm -f *.gcda
-	@rm -f *.gcno
+	@rm -f *.gcda *.gcno
 	@cp $(LIBDBGDIR)/*.gc* .
 	@cp $(DBGDIR)/*.gc* .
 	@gcov -n matrix.c
 	@lcov -q -d . -c -o coverage.info > /dev/null
+	@rm -rf ../cov
 	@genhtml -o ../cov -t "couverture des tests" coverage.info > /dev/null
 	@rm -f *.gc* coverage.info
-	firefox ../cov/index.html
+	firefox ../cov/index.html &
 
 clean:
-	rm -f $(LIBRELEXE)  $(LIBRELOBJS)                       \
+	@rm -f $(LIBRELEXE)  $(LIBRELOBJS)                      \
 	      $(LIBDBGEXE)  $(LIBDBGOBJS)  $(LIBDBGDIR)/*.gc*   \
 	      $(TESTDBGEXE) $(TESTDBGOBJS) $(TESTDBGEXE).gc*    \
 	      $(TESTRELEXE) $(TESTRELOBJS)                      \
 	      $(REGEXE)     $(REGOBJS)     $(REGEXE).gc*  
-	rm -fd $(LIBDBGDIR)  $(LIBRELDIR)                        \
-	       $(DBGDIR) $(RELDIR)                               \
+	@rm -fd $(LIBDBGDIR)  $(LIBRELDIR)                      \
+	       $(DBGDIR) $(RELDIR)                              \
 	       $(BINDIR)
-	rm -rf ../cov
+	@rm -rf ../cov
 
