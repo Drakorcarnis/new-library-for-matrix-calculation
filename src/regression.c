@@ -190,55 +190,56 @@ static int test_error_cases(void)
 {
     matrix_t *matrix1 = matrix_create(3,3);
     matrix_t *matrix2 = matrix_create(2,5);
+    int res = 1;
     long long time = mstime();
     matrix_t *ret = matrix_add_f(matrix1, matrix2);
     if(ret != NULL){
         matrix_free(ret);
         process_result((result_t){"test_not_addable_matrix", 0, 0});
-        return 0;
+        res = 0;
     }
     ret = matrix_mult_f(matrix1, matrix2);
     if(ret != NULL){
         matrix_free(ret);
         process_result((result_t){"test_not_multiplicable_matrix", 0, 0});
-        return 0;
+        res = 0;
     }
     ret = matrix_inverse_raw_f(matrix1);
     if(ret != NULL){
         matrix_free(ret);
         process_result((result_t){"test_not_inversible_matrix", 0, 0});
-        return 0;
+        res = 0;
     }
     ret = matrix_pow_f(matrix2, 15);
     if(ret != NULL){
         matrix_free(ret);
         process_result((result_t){"test_not_square_matrix", 0, 0});
-        return 0;
+        res = 0;
     }
     matrix1->coeff[0][1] = 1.0;
     ret = matrix_inverse_cholesky_f(matrix1);
     if(ret != NULL){
         matrix_free(ret);
         process_result((result_t){"test_not_symetric_matrix", 0, 0});
-        return 0;
+        res = 0;
     }
     ret = matrix_inverse_cholesky_f((matrix_t *)NULL);
     if(ret != NULL){
         matrix_free(ret);
         process_result((result_t){"test_not_sane_matrix", 0, 0});
-        return 0;
+        res = 0;
     }
     ret = matrix_create(1,4135583743);
     if(ret != NULL){
         free(ret);
         process_result((result_t){"test_failed_alloc", 0, 0});
-        return 0;
+        res = 0;
     }
     long long time2 = mstime();
-    process_result((result_t){"test_error_cases", 1, time2 - time});
+    if(res)process_result((result_t){"test_error_cases", 1, time2 - time});
     matrix_free(matrix1);
     matrix_free(matrix2);
-    return(1);
+    return(res);
 }
 
 static matrix_t** chartab2matrixtab(char ** filetab, ssize_t size, char *data_path)

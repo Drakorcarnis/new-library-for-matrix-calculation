@@ -1,72 +1,86 @@
 #
+# Coverage and profiling data
+#
+COV_DIR = ../cov
+PROF_DIR = ../prof
+#
 # Common compiler flags
 #
 CC     = gcc
 CFLAGS = -Wall -Werror -Wextra
 LDFLAGS = -lm
 SOFLAGS = -shared -fPIC
-BINDIR = ../bin
 
+BINDIR = ../bin
+BINDBGDIR = $(BINDIR)/debug
+BINRELDIR = $(BINDIR)/release
+
+OBJDIR = ../obj
+OBJDBGDIR = $(OBJDIR)/debug
+OBJRELDIR = $(OBJDIR)/release
+
+LIBDIR = ../lib
+LIBDBGDIR = $(LIBDIR)/debug
+LIBRELDIR = $(LIBDIR)/release
+
+OBJLIBDIR = $(OBJDIR)/lib
+OBJLIBDBGDIR = $(OBJLIBDIR)/debug
+OBJLIBRELDIR = $(OBJLIBDIR)/release
 #
 # Project files
 #
 INCLUDES = includes
-SRCS = matrix.c matrix_tools.c
+LIB_SRCS = matrix.c matrix_tools.c
 TEST_SRCS = test.c
 REG_SRCS = regression.c
-OBJS = $(SRCS:.c=.o)
+LIB_OBJS = $(LIB_SRCS:.c=.o)
 TEST_OBJS = $(TEST_SRCS:.c=.o)
 REG_OBJS = $(REG_SRCS:.c=.o)
 TEST_EXE  = test
 REGRESSION_EXE = regression
-SO  = libmatrix.so
+LIB_SO  = libmatrix.so
 
 #
-# Debug build settings
+# Lib Debug build settings
 #
-DBGDIR = $(BINDIR)/debug
-LIBDBGDIR = $(DBGDIR)/lib
-LIBDBGEXE = $(LIBDBGDIR)/$(SO)
-LIBDBGOBJS = $(addprefix $(LIBDBGDIR)/, $(OBJS))
-DBGCFLAGS = -g -O0 -DDEBUG --coverage -pg
-DBGLDFLAGS = -L$(DBGDIR)/lib -lmatrix
-$(LIBDBGDIR)/%.o: %.c
+LIBDBGEXE = $(LIBDBGDIR)/$(LIB_SO)
+LIBDBGOBJS = $(addprefix $(OBJLIBDBGDIR)/, $(LIB_OBJS))
+DBGCFLAGS = -g -O0 -DDEBUG --coverage
+DBGLDFLAGS = -L$(LIBDBGDIR) -lmatrix
+$(OBJLIBDBGDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES)
-$(DBGDIR)/%.o: %.c
+$(OBJDBGDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES)
 #
-# Release build settings
+# Lib Release build settings
 #
-RELDIR = $(BINDIR)/release
-LIBRELDIR = $(RELDIR)/lib
-LIBRELEXE = $(LIBRELDIR)/$(SO)
-LIBRELOBJS = $(addprefix $(LIBRELDIR)/, $(OBJS))
+LIBRELEXE = $(LIBRELDIR)/$(LIB_SO)
+LIBRELOBJS = $(addprefix $(OBJLIBRELDIR)/, $(LIB_OBJS))
 RELCFLAGS = -O3 -DNDEBUG
-RELLDFLAGS = -L$(RELDIR)/lib -lmatrix
-$(LIBRELDIR)/%.o: %.c
+RELLDFLAGS = -L$(LIBRELDIR) -lmatrix
+$(OBJLIBRELDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES)
-$(RELDIR)/%.o: %.c
+$(OBJRELDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES)
-
 #
 # Test Debug build settings
 #
-TESTDBGEXE = $(DBGDIR)/$(TEST_EXE)
-TESTDBGOBJS = $(addprefix $(DBGDIR)/, $(TEST_OBJS))
+TESTDBGEXE = $(BINDBGDIR)/$(TEST_EXE)
+TESTDBGOBJS = $(addprefix $(OBJDBGDIR)/, $(TEST_OBJS))
 
 #
 # Test Release build settings
 #
-TESTRELEXE = $(RELDIR)/$(TEST_EXE)
-TESTRELOBJS = $(addprefix $(RELDIR)/, $(TEST_OBJS))
+TESTRELEXE = $(BINRELDIR)/$(TEST_EXE)
+TESTRELOBJS = $(addprefix $(OBJRELDIR)/, $(TEST_OBJS))
 
 #
 # Regression build settings
 #
-REGEXE = $(DBGDIR)/$(REGRESSION_EXE)
-REGOBJS = $(addprefix $(DBGDIR)/, $(REG_OBJS))
+REGEXE = $(BINDBGDIR)/$(REGRESSION_EXE)
+REGOBJS = $(addprefix $(OBJDBGDIR)/, $(REG_OBJS))
 
-.PHONY: all clean debug prep release remake testdebug testrelease reg
+.PHONY: all clean debug prep release remake testdebug testrelease reg coverage profile
 
 # Default build
 all: prep release debug testdebug testrelease reg
@@ -91,7 +105,7 @@ $(LIBRELEXE): $(LIBRELOBJS)
 #
 # Debug test rules
 #
-testdebug: $(TESTDBGEXE)
+testdebug: debug $(TESTDBGEXE)
 
 $(TESTDBGEXE): $(TESTDBGOBJS)
 	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(TESTDBGEXE) $^ $(DBGLDFLAGS)
@@ -99,7 +113,7 @@ $(TESTDBGEXE): $(TESTDBGOBJS)
 #
 # Release test rules
 #
-testrelease: $(TESTRELEXE)
+testrelease: release $(TESTRELEXE)
 
 $(TESTRELEXE): $(TESTRELOBJS)
 	$(CC) $(CFLAGS) $(RELCFLAGS) -o $(TESTRELEXE) $^ $(RELLDFLAGS)
@@ -107,7 +121,7 @@ $(TESTRELEXE): $(TESTRELOBJS)
 #
 # Regression rules
 #
-reg: $(REGEXE)
+reg: debug $(REGEXE)
 
 $(REGEXE): $(REGOBJS)
 	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(REGEXE) $^ $(DBGLDFLAGS) $(LDFLAGS)
@@ -116,31 +130,45 @@ $(REGEXE): $(REGOBJS)
 # Other rules
 #
 prep:
-	@mkdir -p $(DBGDIR) $(RELDIR) $(LIBDBGDIR) $(LIBRELDIR)
+	@mkdir -p $(BINDIR) $(BINDBGDIR) $(BINRELDIR)
+	@mkdir -p $(OBJDIR) $(OBJDBGDIR) $(OBJRELDIR)
+	@mkdir -p $(LIBDIR) $(LIBDBGDIR) $(LIBRELDIR)
+	@mkdir -p $(OBJLIBDIR) $(OBJLIBDBGDIR) $(OBJLIBRELDIR)
 
 remake: clean all
 
-lcov: reg
-	@rm -f $(LIBDBGDIR)/*.gcda $(DBGDIR)/*.gcda
+.ONESHELL:
+
+coverage: reg
+	@rm -f $(LIBDBGDIR)/*.gcda $(LIBDBGDIR)/*.gcda
 	@LD_LIBRARY_PATH="$(LIBDBGDIR)" $(REGEXE)
 	@rm -f *.gcda *.gcno
-	@cp $(LIBDBGDIR)/*.gc* .
-	@cp $(DBGDIR)/*.gc* .
+	@cp $(OBJLIBDBGDIR)/*.gcno .
+	@cp $(OBJLIBDBGDIR)/*.gcda .
 	@gcov -n matrix.c
 	@lcov -q -d . -c -o coverage.info > /dev/null
-	@rm -rf ../cov
-	@genhtml -o ../cov -t "couverture des tests" coverage.info > /dev/null
+	@rm -rf $(COV_DIR)
+	@genhtml -o $(COV_DIR) -t "couverture des tests" coverage.info > /dev/null
 	@rm -f *.gc* coverage.info
-	firefox ../cov/index.html &
+	firefox $(COV_DIR)/index.html &
+
+profile: reg
+	mkdir -p $(PROF_DIR)
+	rm -f $(PROF_DIR)/callgrind.out
+	LD_LIBRARY_PATH="$(LIBDBGDIR)" valgrind  --tool=callgrind --simulate-cache=yes --callgrind-out-file=$(PROF_DIR)/callgrind.out $(REGEXE)
+	kcachegrind $(PROF_DIR)/callgrind.out
 
 clean:
-	@rm -f $(LIBRELEXE)  $(LIBRELOBJS)                      \
-	      $(LIBDBGEXE)  $(LIBDBGOBJS)  $(LIBDBGDIR)/*.gc*   \
-	      $(TESTDBGEXE) $(TESTDBGOBJS) $(TESTDBGEXE).gc*    \
-	      $(TESTRELEXE) $(TESTRELOBJS)                      \
-	      $(REGEXE)     $(REGOBJS)     $(REGEXE).gc*  
-	@rm -fd $(LIBDBGDIR)  $(LIBRELDIR)                      \
-	       $(DBGDIR) $(RELDIR)                              \
-	       $(BINDIR)
-	@rm -rf ../cov
+	@rm -f  $(LIBRELEXE)  $(LIBRELOBJS)             \
+	        $(LIBDBGEXE)  $(LIBDBGOBJS)             \
+	        $(TESTDBGEXE) $(TESTDBGOBJS)            \
+	        $(TESTRELEXE) $(TESTRELOBJS)            \
+	        $(REGEXE)     $(REGOBJS)                \
+	        $(OBJLIBDBGDIR)/*.gc* $(OBJDBGDIR)/*.gc*
+	@rm -fd $(OBJLIBRELDIR)  $(OBJLIBDBGDIR) $(OBJLIBDIR)   \
+	        $(LIBRELDIR) $(LIBDBGDIR) $(LIBDIR)             \
+	        $(OBJRELDIR) $(OBJDBGDIR) $(OBJDIR)             \
+	        $(BINRELDIR) $(BINDBGDIR) $(BINDIR)                    
+	@rm -rf $(COV_DIR)
+	@rm -rf $(PROF_DIR)
 
