@@ -5,8 +5,16 @@
 #include <errno.h>
 #include <time.h>
 #include <complex.h>
+#include <immintrin.h>
+#include <omp.h>
 #include "matrix.h"
 #include "matrix_tools.h"
+
+#define MAX_RANK 10000
+#define NUM_POOLS 2
+
+#define ROW_MODE    0
+#define COLUMN_MODE 1
 
 typedef struct {
     int nb_perm;
@@ -15,6 +23,16 @@ typedef struct {
     matrix_t *U;
 } plu_t;
 
+typedef struct {
+    double      cached_matrix[MAX_RANK*MAX_RANK];
+    void *      cached_matrix_ptr;
+    int         cached_matrix_mode;
+    int         index;
+}pool_t;
+
+pool_t pools[NUM_POOLS]; 
+int pool_index = 0; 
+
 static int sanity_check(const void *pointer, const char *function_name);
 static int square_check(const matrix_t *matrix, const char *function_name);
 static int symetry_check(const matrix_t *matrix, const char *function_name);
@@ -22,7 +40,7 @@ static int symetry_check(const matrix_t *matrix, const char *function_name);
 static plu_t * plu_create(unsigned int rank);
 static void plu_free(plu_t *plu);
 static plu_t * matrix_plu_f(const matrix_t *matrix);
-static matrix_t * matrix_cholesky_f(const matrix_t *matrix);
+static double complex * matrix_cholesky_f(const matrix_t *matrix);
 
 static int sanity_check(const void *pointer, const char *function_name)
 {
@@ -55,6 +73,57 @@ static int symetry_check(const matrix_t *matrix, const char *function_name)
     return 1;
 }
 
+static double * stackify_matrix(const matrix_t *matrix, int mode)
+{
+    double * ret = NULL;
+    for (unsigned int i = 0; i < NUM_POOLS; i++) {
+        if (pools[i].cached_matrix_ptr == matrix && pools[i].cached_matrix_mode == mode){
+            return pools[i].cached_matrix;
+        }
+    }
+    for (unsigned int i = 0; i < NUM_POOLS; i++) {
+        if (pools[i].cached_matrix_ptr == NULL){
+            ret = pools[i].cached_matrix;
+            pools[i].cached_matrix_ptr = (void *) matrix;
+            pools[i].cached_matrix_mode = mode;
+            break;
+        }
+    }
+    if (ret == NULL){
+        pools[pool_index].cached_matrix_mode = mode;
+        pools[pool_index].cached_matrix_ptr = (void *) matrix;
+        ret = pools[pool_index].cached_matrix;
+        pool_index = (pool_index + 1) % NUM_POOLS;
+    }
+    unsigned int n = matrix->rows;
+    unsigned int m = matrix->columns;
+    if (n>MAX_RANK){
+        fprintf(stderr,"Rank %u > MAX_RANK\n", n);
+        return NULL;
+    }
+    if (m>MAX_RANK){
+        fprintf(stderr,"Rank %u > MAX_RANK\n", m);
+        return NULL;
+    }
+    if(mode == ROW_MODE){
+        for (unsigned int i = 0; i < n; i++) {
+            for (unsigned int j = 0; j < m; j++) {
+                ret[i * n + j] = matrix->coeff[i][j];
+            }
+        }
+    } else if(mode == COLUMN_MODE){
+        for (unsigned int i = 0; i < n; i++) {
+            for (unsigned int j = 0; j < m; j++) {
+                ret[j * m + i] = matrix->coeff[i][j];
+            }
+        }
+    } else {
+        fprintf(stderr,"Invalid mode %d\n", mode);
+        return NULL;
+    }
+    return ret;
+}
+
 static plu_t * plu_create(unsigned int rank){
     plu_t *plu = malloc(sizeof(plu_t));
     plu->P = matrix_identity(rank);
@@ -81,10 +150,10 @@ matrix_t * matrix_create(unsigned int rows, unsigned int columns)
     if (!matrix) goto failed_matrix;
     matrix->rows = rows;
     matrix->columns = columns;
-    matrix->coeff = malloc(rows*sizeof(double complex *));
+    matrix->coeff = malloc(rows*sizeof(double *));
     if (!matrix->coeff) goto failed_coeff;
     for (; i < rows; i++){
-        matrix->coeff[i] = calloc(columns, sizeof(double complex));
+        matrix->coeff[i] = calloc(columns, sizeof(double));
         if (!matrix->coeff[i]) goto failed_coeff_elt;
     }
     return matrix;
@@ -107,7 +176,7 @@ matrix_t * matrix_identity(unsigned int n)
 
 matrix_t * matrix_permutation(unsigned int line1, unsigned int line2, unsigned int n)
 {
-    double complex tmp;
+    double tmp;
     matrix_t * matrix = matrix_identity(n);
     for (unsigned int i = 0; i < n; i++){
         tmp = matrix->coeff[line1][i];
@@ -171,7 +240,7 @@ matrix_t * matrix_add_f(const matrix_t *matrix1, const matrix_t *matrix2)
     return add_matrix;
 }
 
-matrix_t * matrix_mult_scalar_f(const matrix_t *matrix, double complex lambda)
+matrix_t * matrix_mult_scalar_f(const matrix_t *matrix, double lambda)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     matrix_t *mult_matrix = matrix_create(matrix->rows, matrix->columns);
@@ -183,6 +252,34 @@ matrix_t * matrix_mult_scalar_f(const matrix_t *matrix, double complex lambda)
     return mult_matrix;
 }
 
+static double avx_mult(int n, double *x, double *y)
+{
+	int i;
+    int n8 = n>>3<<3;
+	__m256d vs1, vs2;
+	double s, t[4];
+	vs1 = _mm256_setzero_pd();
+	vs2 = _mm256_setzero_pd();
+	for (i = 0; i < n8; i += 8) {
+		__m256d vx1, vx2, vy1, vy2;
+		vx1 = _mm256_loadu_pd(&x[i]);
+		vx2 = _mm256_loadu_pd(&x[i+4]);
+		vy1 = _mm256_loadu_pd(&y[i]);
+		vy2 = _mm256_loadu_pd(&y[i+4]);
+		vs1 = _mm256_add_pd(vs1, _mm256_mul_pd(vx1, vy1));
+		vs2 = _mm256_add_pd(vs2, _mm256_mul_pd(vx2, vy2));
+	}
+	for (s = 0.0f; i < n; ++i){
+        s += x[i] * y[i];
+    }
+    
+	_mm256_storeu_pd(t, vs1);
+	s += t[0] + t[1] + t[2] + t[3];
+	_mm256_storeu_pd(t, vs2);
+	s += t[0] + t[1] + t[2] + t[3];
+	return s;
+}
+
 matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
 {
     if(!sanity_check((void *)matrix1, __func__))return NULL; 
@@ -191,15 +288,23 @@ matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
         fprintf(stderr, "%s: not multiplicable matrix (matrix2->rows != matrix1->columns)\n", __func__);
         return NULL;
     }
+   	unsigned int i, j, n = matrix1->rows, m = matrix2->columns;
     matrix_t *mult = matrix_create(matrix1->columns, matrix2->columns);
-    for (unsigned int i = 0; i < mult->rows; i++) {
-        for (unsigned int j = 0; j < mult->columns; j++) {
-            for (unsigned int k = 0; k < matrix1->rows; k++) {
-                mult->coeff[i][j] = mult->coeff[i][j] + (matrix1->coeff[i][k] * matrix2->coeff[k][j]);
+    double *rows = stackify_matrix(matrix1, ROW_MODE);
+    if(!sanity_check((void *)rows, __func__))return NULL; 
+    double *columns = stackify_matrix(matrix2, COLUMN_MODE);
+    if(!sanity_check((void *)columns, __func__))return NULL; 
+    double ** coeff = mult->coeff;
+    #pragma omp parallel shared(coeff) private(i, j) num_threads(8)
+	{
+        #pragma omp for schedule(static)
+        for (i = 0; i < n; i++) {
+            for (j = 0; j < m; j++) {
+                coeff[i][j] = avx_mult(n, &rows[i*n], &columns[j*m]);
             }
         }
     }
-    return mult;
+	return mult;
 }
 
 matrix_t * matrix_pow_f(const matrix_t *matrix, int pow)
@@ -274,10 +379,10 @@ matrix_t * matrix_solve_diag_sup(const matrix_t *A, const matrix_t *B)
 }
  
 // Methods based upon raw determinant calculation. For fun only. Do never use them, cuz you've NO reason to use them. Really.
-double complex matrix_det_raw_f(const matrix_t *matrix)
+double matrix_det_raw_f(const matrix_t *matrix)
 {
-    double complex det = 0;
-    double complex sign = 0;
+    double det = 0;
+    double sign = 0;
     matrix_t *shrinked_matrix = NULL;
     if(!sanity_check((void *)matrix, __func__))return 0;
     if(matrix->columns != matrix->rows) return 0;
@@ -285,7 +390,7 @@ double complex matrix_det_raw_f(const matrix_t *matrix)
     for (unsigned int i = 0; i < matrix->columns; i++) 
     {
         shrinked_matrix=matrix_shrink_f(matrix, 0, i);
-        sign = (int)pow(-1.0,(double complex)i);
+        sign = (int)pow(-1.0,(double)i);
         det += sign * matrix->coeff[0][i] * matrix_det_raw_f(shrinked_matrix);
         matrix_free(shrinked_matrix);
     }
@@ -295,8 +400,8 @@ double complex matrix_det_raw_f(const matrix_t *matrix)
 matrix_t * matrix_inverse_raw_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
-    double complex det = matrix_det_raw_f(matrix);
-    double complex one = 1;
+    double det = matrix_det_raw_f(matrix);
+    double one = 1;
     if(!det){
         fprintf(stderr, "%s: not inversible matrix (|M| = 0)\n", __func__);
         return NULL;
@@ -323,13 +428,13 @@ matrix_t * matrix_com_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     if(!square_check(matrix, __func__))return NULL; 
-    double complex sign = 0;
+    double sign = 0;
     matrix_t *shrinked_matrix = NULL;
     matrix_t *co_matrix = matrix_create(matrix->rows, matrix->columns);
     for (unsigned int i = 0; i < co_matrix->rows; i++){
         for (unsigned int j = 0; j < co_matrix->columns; j++){
             shrinked_matrix=matrix_shrink_f(matrix, i, j);
-            sign = (int)pow(-1.0,(double complex)(i+j));
+            sign = (int)pow(-1.0,(double)(i+j));
             co_matrix->coeff[i][j] = sign * matrix_det_raw_f(shrinked_matrix);
             matrix_free(shrinked_matrix);
         }
@@ -356,7 +461,7 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
     plu_t *plu = plu_create(n); 
     matrix_t *A = matrix_copy(matrix), *L = plu->L, *U = plu->U;
     matrix_t *perm, *perm_mult;
-    double complex sum, tmp;
+    double sum, tmp;
     for (unsigned int i = 0; i < n; i++)
     {
         for (unsigned int j = i; j < n; j++){
@@ -399,12 +504,12 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
     return(plu);  
 }
 
-double complex matrix_det_plu_f(const matrix_t *matrix)
+double matrix_det_plu_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return 0;
     if(!square_check(matrix, __func__))return 0; 
     plu_t *plu = matrix_plu_f(matrix);
-    double complex det = pow(-1.0, plu->nb_perm);
+    double det = pow(-1.0, plu->nb_perm);
     for (unsigned int i=0; i < plu->L->rows; i++)det *= plu->L->coeff[i][i];
     plu_free(plu);
     return det;
@@ -443,47 +548,138 @@ matrix_t * matrix_inverse_plu_f(const matrix_t *matrix)
     return(matrix_inverse);
 } 
 
-// Highly optimized fast methods based upon Cholesky decomposition.
-static matrix_t * matrix_cholesky_f(const matrix_t *matrix)
+static double complex * matrix_cholesky_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     if(!square_check(matrix, __func__))return NULL;
     if(!symetry_check(matrix, __func__))return NULL;
     int n = matrix->rows;
     double complex sum;
-    matrix_t *L = matrix_create(n, n); 
+    double complex *L = calloc(n*n,sizeof(double complex)); 
+    if(!L){
+        perror("alloc");
+        return NULL;
+    }
     for (int i = 0; i < n; i++){
         sum = 0;
-        for (int k = 0; k < i; k++)sum += L->coeff[i][k] * L->coeff[i][k];
-        L->coeff[i][i] = csqrt(matrix->coeff[i][i] - sum);
+        int index = n*i;
+        for (int k = 0; k < i; k++)sum += L[index+k] * L[index+k];
+        L[n*i+i] = csqrt(matrix->coeff[i][i] - sum);
         for (int j = i+1; j < n; j++){
             sum = 0;
-            for (int k = 0; k < i; k++)sum += L->coeff[i][k] * L->coeff[j][k];
-            L->coeff[j][i] = (matrix->coeff[i][j] - sum)/L->coeff[i][i];
+            int index2 = n*j;
+            for (int k = 0; k < i; k++)sum += L[index+k] * L[index2+k];
+            L[index2+i] = (matrix->coeff[i][j] - sum)/L[index+i];
         }
     }
     return(L);  
 } 
- 
+
+double complex ** matrix_solve_diag_inf_comp(double complex *A[], double complex *B[], int n, int m)
+{
+    double complex **X = calloc(n,sizeof(double complex *));
+    if(!X){
+        perror("alloc");
+        return NULL;
+    }
+    for (int i = 0; i < n; i++){
+        X[i] = calloc(m,sizeof(double complex));
+    }
+    for (int i = 0; i < m; i++){
+        for (int j = 0; j < n; j++){
+            X[j][i] = B[j][i];
+            for (int k = 0; k < j; k++)X[j][i] =  X[j][i] - X[k][i] * A[j][k];
+            X[j][i] = X[j][i] / A[j][j];
+        }
+    }
+    return(X);
+}
+
+double complex ** matrix_solve_diag_sup_comp(double complex *A[], double complex *B[], int n, int m)
+{
+    double complex **X = calloc(n,sizeof(double complex *));
+    if(!X){
+        perror("alloc");
+        return NULL;
+    }
+    for (int i = 0; i < n; i++){
+        X[i] = calloc(m,sizeof(double complex));
+    }
+    for (int i = 0; i < m; i++){
+        for (int j = n - 1; j >= 0; j--){
+            X[j][i] = B[j][i];
+            for (int k = n - 1; k > j; k--)X[j][i] =  X[j][i] - X[k][i] * A[j][k];
+            X[j][i] = X[j][i] / A[j][j];
+        }
+    }
+    return(X);
+} 
+
 matrix_t * matrix_solve_cholesky_f(const matrix_t *A, const matrix_t *B)
 {
     if(!sanity_check((void *)A, __func__))return NULL;
     if(!square_check(A, __func__))return NULL;
     if(!symetry_check(A, __func__))return NULL;
-    matrix_t *L = matrix_cholesky_f(A);
-    matrix_t *LT = matrix_transp_f(L);
-    matrix_t *Z = matrix_solve_diag_inf(L, B);
-    matrix_free(L);
-    matrix_t *X = matrix_solve_diag_sup(LT, Z);
-    matrix_free(LT);
-    matrix_free(Z);
-    matrix_t *ret = matrix_create(A->rows,B->columns);
-    for (unsigned int i=0; i < A->rows; i++){
-        for (unsigned int j=0; j < B->columns; j++){
-            ret->coeff[i][j] = X->coeff[i][j];
+    int n = A->rows, m = B->columns;
+    double complex **comp_B = calloc(n,sizeof(double complex *));
+    if(!comp_B){
+        perror("alloc");
+        return NULL;
+    }
+    for (int i = 0; i < n; i++){
+        comp_B[i] = calloc(m,sizeof(double complex));
+    }
+    for (int i=0; i < n; i++){
+        for (int j=0; j < m; j++){
+            comp_B[i][j] = (double complex)B->coeff[i][j];
         }
     }
-    matrix_free(X);
+    double complex *L = matrix_cholesky_f(A);
+    double complex **stackL = calloc(n,sizeof(double complex *));
+    if(!stackL){
+        perror("alloc");
+        return NULL;
+    }
+    double complex **stackLT = calloc(n,sizeof(double complex *));
+    if(!stackLT){
+        perror("alloc");
+        return NULL;
+    }
+    for (int i = 0; i < n; i++){
+        stackL[i] = calloc(n,sizeof(double complex));
+        stackLT[i] = calloc(n,sizeof(double complex));
+    }
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            stackL[i][j] = L[i*n+j];
+            stackLT[j][i] = L[i*n+j];
+        }
+    }
+    free(L);
+    double complex **Z = matrix_solve_diag_inf_comp(stackL, comp_B, n, m);
+    for (int i = 0; i < n; i++){
+        free(comp_B[i]);
+        free(stackL[i]);
+    }
+    free(comp_B);
+    free(stackL);
+    double complex **X = matrix_solve_diag_sup_comp(stackLT, Z, n, m);
+    for (int i = 0; i < n; i++){
+        free(Z[i]);
+        free(stackLT[i]);
+    }
+    free(Z);
+    free(stackLT);
+    matrix_t *ret = matrix_create(n,m);
+    for (int i=0; i < n; i++){
+        for (int j=0; j < m; j++){
+            ret->coeff[i][j] = creal(X[i][j]);
+        }
+    }
+    for (int i = 0; i < n; i++){
+        free(X[i]);
+    }
+    free(X);
     return(ret);
 }
 
@@ -493,18 +689,22 @@ matrix_t * matrix_inverse_cholesky_f(const matrix_t *matrix)
     if(!square_check(matrix, __func__))return NULL;
     if(!symetry_check(matrix, __func__))return NULL;
     matrix_t *Id = matrix_identity(matrix->rows);
+    // matrix_t *matrix_inverse2 = matrix_inverse_plu_f(matrix);
+
+    // matrix_free(matrix_inverse2);
     matrix_t *matrix_inverse = matrix_solve_cholesky_f(matrix, Id);
     matrix_free(Id);
     return(matrix_inverse);
 }
 
-double complex matrix_det_cholesky_f(const matrix_t *matrix)
+double matrix_det_cholesky_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return 0;
     if(!square_check(matrix, __func__))return 0; 
-    matrix_t *L = matrix_cholesky_f(matrix);
-    double complex det = 1;
-    for (unsigned int i=0; i < L->rows; i++)det *= L->coeff[i][i];
-    matrix_free(L);
+    double complex *L = matrix_cholesky_f(matrix);
+    complex det = 1;
+    int n = matrix->rows;
+    for (int i=0; i < n; i++)det *= L[i*n+i];
+    free(L);
     return det * det;
 }

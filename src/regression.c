@@ -20,11 +20,11 @@ int precision = PRECISION;
 #define IN_1MATRIX_OUT_MATRIX_OUT   "matrix_transp",    "matrix_inv",           "matrix_sym_inv"  ,          "matrix_inv",         
 #define IN_1MATRIX_OUT_MATRIX_NAME  "matrix_transp_f",  "matrix_inverse_plu_f", "matrix_inverse_cholesky_f", "matrix_inverse_raw_f"
 
-#define IN_2MATRIX_OUT_MATRIX       matrix_add_f,   matrix_mult_f,      matrix_solve_plu_f,     matrix_solve_cholesky_f,        matrix_solve_plu_f,         matrix_solve_raw_f,  
-#define IN_2MATRIX_OUT_MATRIX_IN0   "matrix",       "matrix",           "matrix",               "matrix_sym",                   "matrix_sym",               "matrix",            
-#define IN_2MATRIX_OUT_MATRIX_IN1   "matrix",       "matrix",           "B",                    "B",                            "B",                        "B",                 
-#define IN_2MATRIX_OUT_MATRIX_OUT   "matrix_add",   "matrix_mult",      "X",                    "X_sym",                        "X_sym",                    "X",                 
-#define IN_2MATRIX_OUT_MATRIX_NAME  "matrix_add_f", "matrix_mult_f",    "matrix_solve_plu_f",   "matrix_sym_solve_cholesky_f",  "matrix_solve_plu_f sym",   "matrix_solve_raw_f",
+#define IN_2MATRIX_OUT_MATRIX       matrix_add_f,   matrix_mult_f,      matrix_mult_f,      matrix_solve_plu_f,         matrix_solve_cholesky_f,        matrix_solve_plu_f,             matrix_solve_raw_f,  
+#define IN_2MATRIX_OUT_MATRIX_IN0   "matrix",       "matrix",           "matrix",           "matrix",                   "matrix_sym",                   "matrix_sym",                   "matrix",            
+#define IN_2MATRIX_OUT_MATRIX_IN1   "matrix",       "matrix",           "B",                "B",                        "B",                            "B",                            "B",    
+#define IN_2MATRIX_OUT_MATRIX_OUT   "matrix_add",   "matrix_mult",      "vector_mult",      "X",                        "X_sym",                        "X_sym",                        "X",
+#define IN_2MATRIX_OUT_MATRIX_NAME  "matrix_add_f", "matrix_mult_f",    "vector_mult_f",    "matrix_solve_plu_f",       "matrix_solve_cholesky_f",      "matrix_sym_solve_plu_f",       "matrix_solve_raw_f",
 
 #define IN_1MATRIX_1DOUBLE_OUT_MATRIX       matrix_mult_scalar_f
 #define IN_1MATRIX_1DOUBLE_OUT_MATRIX_IN0   "matrix"
@@ -62,29 +62,18 @@ static void process_result(result_t res)
     free(formatted_time);
 }
 
-static int test_matrix_equality(const matrix_t *matrix1, const matrix_t *matrix2){
-    // matrix_display(matrix1);printf("\n");matrix_display(matrix2);
-    if((matrix1->rows != matrix2->rows) || (matrix1->columns != matrix2->columns))return 0;
-    for (unsigned int i=0; i<matrix1->rows; i++){
-        for (unsigned int j=0; j<matrix1->columns; j++){
-            if(fabs(creal(matrix1->coeff[i][j] - matrix2->coeff[i][j])) > pow(10, -precision))return 0;
-            if(fabs(cimag(matrix1->coeff[i][j] - matrix2->coeff[i][j])) > pow(10, -precision))return 0;
-        }
-    }
-    return 1;
-}
 
-static int test_function_in_matrix_out_double_f(double complex(*function)(const matrix_t*), matrix_t* matrix, double complex expected, char *test_name)
+static int test_function_in_matrix_out_double_f(double(*function)(const matrix_t*), matrix_t* matrix, double expected, char *test_name)
 {
     long long time = mstime();
-    double complex ret = (function)(matrix);
+    double ret = (function)(matrix);
     long long time2 = mstime();
-    result_t res = {test_name, fabs(-1+creal(ret)/creal(expected)) < 2e-3, time2 - time};
+    result_t res = {test_name, fabs(-1+ret/expected) < 2e-3, time2 - time};
     process_result(res);
     if (!res.result){
         printf("input:\n");
         matrix_display(matrix);
-        printf("expected: %f\ngot: %f\n",creal(expected), creal(ret));
+        printf("expected: %f\ngot: %f\n",expected, ret);
     }
     return(res.result);
 }
@@ -94,7 +83,7 @@ static int test_function_in_matrix_out_matrix_f(matrix_t*(*function)(const matri
     long long time = mstime();
     matrix_t *ret = (function)(matrix);
     long long time2 = mstime();
-    result_t res = {test_name, test_matrix_equality(expected, ret), time2 - time};
+    result_t res = {test_name, test_matrix_equality(expected, ret, precision), time2 - time};
     process_result(res);
     if (!res.result){
         printf("input:\n");
@@ -113,7 +102,7 @@ static int test_function_in_2matrix_out_matrix_f(matrix_t*(*function)(const matr
     long long time = mstime();
     matrix_t *ret = (function)(matrix1, matrix2);
     long long time2 = mstime();
-    result_t res = {test_name, test_matrix_equality(expected, ret), time2 - time};
+    result_t res = {test_name, test_matrix_equality(expected, ret, precision), time2 - time};
     process_result(res);
     if (!res.result){
         printf("input1:\n");
@@ -129,12 +118,12 @@ static int test_function_in_2matrix_out_matrix_f(matrix_t*(*function)(const matr
     return(res.result);
 }
 
-static int test_function_in_matrix_double_out_matrix_f(matrix_t*(*function)(const matrix_t*, double complex), matrix_t* matrix, double complex val, matrix_t* expected, char *test_name)
+static int test_function_in_matrix_double_out_matrix_f(matrix_t*(*function)(const matrix_t*, double), matrix_t* matrix, double val, matrix_t* expected, char *test_name)
 {
     long long time = mstime();
     matrix_t *ret = (function)(matrix, val);
     long long time2 = mstime();
-    result_t res = {test_name, test_matrix_equality(expected, ret), time2 - time};
+    result_t res = {test_name, test_matrix_equality(expected, ret, precision), time2 - time};
     process_result(res);
     if (!res.result){
         printf("input:\n");
@@ -153,7 +142,7 @@ static int test_function_in_matrix_int_out_matrix_f(matrix_t*(*function)(const m
     long long time = mstime();
     matrix_t *ret = (function)(matrix, val);
     long long time2 = mstime();
-    result_t res = {test_name, test_matrix_equality(expected, ret), time2 - time};
+    result_t res = {test_name, test_matrix_equality(expected, ret, precision), time2 - time};
     process_result(res);
     if (!res.result){
         printf("input:\n");
@@ -172,7 +161,7 @@ static int test_function_in_matrix_2int_out_matrix_f(matrix_t*(*function)(const 
     long long time = mstime();
     matrix_t *ret = (function)(matrix, val0, val1);
     long long time2 = mstime();
-    result_t res = {test_name, test_matrix_equality(expected, ret), time2 - time};
+    result_t res = {test_name, test_matrix_equality(expected, ret, precision), time2 - time};
     process_result(res);
     if (!res.result){
         printf("input:\n");
@@ -270,12 +259,12 @@ int main(int argc, char **argv) {
         precision = atoi(argv[1]);
     ssize_t size;
     
-    double complex(*test_function_in_1matrix_out_double_f[])(const matrix_t*) = {IN_1MATRIX_OUT_DOUBLE};
+    double(*test_function_in_1matrix_out_double_f[])(const matrix_t*) = {IN_1MATRIX_OUT_DOUBLE};
     char* test_function_in_1matrix_out_double_name[] = {IN_1MATRIX_OUT_DOUBLE_NAME};
     char* test_function_in_1matrix_out_double_in[] = {IN_1MATRIX_OUT_DOUBLE_IN};
     size = sizeof(test_function_in_1matrix_out_double_in)/sizeof(char*);
     matrix_t** test_function_in_1matrix_out_double_in_input = chartab2matrixtab(test_function_in_1matrix_out_double_in, size, data_path);
-    double complex test_function_in_1matrix_out_double_out[] = {IN_1MATRIX_OUT_DOUBLE_OUT}; 
+    double test_function_in_1matrix_out_double_out[] = {IN_1MATRIX_OUT_DOUBLE_OUT}; 
     for (int i = 0; i < size; i++)
         if(!test_function_in_matrix_out_double_f(test_function_in_1matrix_out_double_f[i],test_function_in_1matrix_out_double_in_input[i], test_function_in_1matrix_out_double_out[i], test_function_in_1matrix_out_double_name[i]))ret=1;    
     free_matrixtab(test_function_in_1matrix_out_double_in_input, size);
@@ -312,7 +301,7 @@ int main(int argc, char **argv) {
     free_matrixtab(test_function_in_2matrix_out_matrix_in1_input, size);
     free_matrixtab(test_function_in_2matrix_out_matrix_out_output, size);
     
-    matrix_t*(*test_function_in_1matrix_double_out_matrix_f[])(const matrix_t*, double complex) = {IN_1MATRIX_1DOUBLE_OUT_MATRIX};
+    matrix_t*(*test_function_in_1matrix_double_out_matrix_f[])(const matrix_t*, double) = {IN_1MATRIX_1DOUBLE_OUT_MATRIX};
     char* test_function_in_1matrix_double_out_matrix_name[] = {IN_1MATRIX_1DOUBLE_OUT_MATRIX_NAME};
     char* test_function_in_1matrix_double_out_matrix_in0[] = {IN_1MATRIX_1DOUBLE_OUT_MATRIX_IN0};
     size = sizeof(test_function_in_1matrix_double_out_matrix_in0)/sizeof(char*);

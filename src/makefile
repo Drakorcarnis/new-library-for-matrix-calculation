@@ -8,8 +8,8 @@ PROF_DIR = ../prof
 #
 CC     = gcc
 CFLAGS = -Wall -Werror -Wextra
-LDFLAGS = -lm
-SOFLAGS = -shared -fPIC
+LDFLAGS = -lm -lgomp
+SOFLAGS = -shared -fPIC -fopenmp -mavx
 
 BINDIR = ../bin
 BINDBGDIR = $(BINDIR)/debug
