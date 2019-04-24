@@ -41,7 +41,8 @@ int test_matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
     if(!mat_mult_matrix)return(0);
     char *formatted_time = format_time(time2 - time, "ms");
     printf("\n(%s)M1*M2\n", formatted_time);
-    matrix2file(mat_mult_matrix, "mat_mult_matrix.txt");
+    // matrix2file(mat_mult_matrix, "2000.txt");
+    // matrix_display_exact(mat_mult_matrix, 15);
     matrix_free(mat_mult_matrix);
     free(formatted_time);
     return(1);
@@ -154,20 +155,22 @@ int main(int argc, char *argv[]) {
         rank = 10;
     else
         rank = atoi(argv[1]);
+    rank = rank +1 -1;
+    // matrix_t *matrix1 = file2matrix("4000.txt");
     matrix_t *matrix1 = matrix_random(rank,rank);
     matrix_t *matrix2 = matrix_symetric_random(rank,rank);
     matrix_t *matrix3 = matrix_random(rank,1);
     if(!matrix1)return(-1);
     if(!matrix2)return(-1);
     if(!matrix3)return(-1);
-    // printf("M1 =\n");
+    printf("M1 =\n");
     
-    matrix2file(matrix1, "matrix1.txt");
-    // matrix_display_exact(matrix1, 15);
-    // printf("M2 =\n");
-    // matrix_display_exact(matrix2, 15);
-    // printf("M3 =\n");
-    // matrix_display(matrix3);
+    // matrix2file(matrix1, "matrix1.txt");
+    matrix_display_exact(matrix1, 15);
+    printf("M2 =\n");
+    matrix_display_exact(matrix2, 15);
+    printf("M3 =\n");
+    matrix_display(matrix3);
     
     // test_function_f(&matrix_transp_f,matrix1, "transp(M)");
     // test_matrix_add_f(matrix1, matrix2);

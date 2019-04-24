@@ -30,7 +30,7 @@ OBJLIBRELDIR = $(OBJLIBDIR)/release
 # Project files
 #
 INCLUDES = includes
-LIB_SRCS = matrix.c matrix_tools.c
+LIB_SRCS = matrix.c matrix_tools.c plu.c cholesky.c check.c
 TEST_SRCS = test.c
 REG_SRCS = regression.c
 LIB_OBJS = $(LIB_SRCS:.c=.o)
@@ -56,7 +56,7 @@ $(OBJDBGDIR)/%.o: %.c
 #
 LIBRELEXE = $(LIBRELDIR)/$(LIB_SO)
 LIBRELOBJS = $(addprefix $(OBJLIBRELDIR)/, $(LIB_OBJS))
-RELCFLAGS = -O3 -DNDEBUG
+RELCFLAGS = -O2 -DNDEBUG
 RELLDFLAGS = -L$(LIBRELDIR) -lmatrix
 $(OBJLIBRELDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES)
@@ -155,7 +155,7 @@ coverage: reg
 profile: reg
 	mkdir -p $(PROF_DIR)
 	rm -f $(PROF_DIR)/callgrind.out
-	LD_LIBRARY_PATH="$(LIBDBGDIR)" valgrind  --tool=callgrind --simulate-cache=yes --callgrind-out-file=$(PROF_DIR)/callgrind.out $(REGEXE)
+	LD_LIBRARY_PATH="$(LIBDBGDIR)" valgrind  --tool=callgrind --simulate-cache=yes --callgrind-out-file=$(PROF_DIR)/callgrind.out $(TESTRELEXE) 300
 	kcachegrind $(PROF_DIR)/callgrind.out
 
 clean:

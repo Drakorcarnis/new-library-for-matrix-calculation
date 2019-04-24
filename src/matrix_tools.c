@@ -4,8 +4,18 @@
 #include <math.h>
 #include <errno.h>
 #include <time.h>
+#include <sys/time.h>
 #include "matrix.h"
 #include "matrix_tools.h"
+
+static int sanity_check(const void *pointer, const char *function_name)
+{
+    if(!pointer){
+        fprintf(stderr, "%s: NULL pointer\n",function_name);
+        return 0;
+    }
+    return 1;
+}
 
 static double str2double(const char *str, int len)
 {
@@ -223,12 +233,16 @@ char * format_time(const long long input_time, char* format)
 
 long long mstime(void)
 {
-    return((long long)(1e3*clock()/CLOCKS_PER_SEC));
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return((long long)(tv.tv_usec/1000 + (long long)tv.tv_sec * 1000));
+    // return((long long)(1e3*clock()/CLOCKS_PER_SEC));
 }
 
 int test_matrix_equality(const matrix_t *matrix1, const matrix_t *matrix2, int precision)
 {
-    // matrix_display(matrix1);printf("\n");matrix_display(matrix2);
+    if(!sanity_check(matrix1, __func__))return 0; 
+    if(!sanity_check(matrix2, __func__))return 0; 
     if((matrix1->rows != matrix2->rows) || (matrix1->columns != matrix2->columns))return 0;
     for (unsigned int i=0; i<matrix1->rows; i++){
         for (unsigned int j=0; j<matrix1->columns; j++){

@@ -7,23 +7,23 @@
 #include "matrix_tools.h"
 
 #define DATA_PATH "/home/Drakorcarnis/new_library/src/data"
-#define PRECISION 14
+#define PRECISION 10
 int precision = PRECISION;
 
 #define IN_1MATRIX_OUT_DOUBLE       matrix_det_plu_f,   matrix_det_cholesky_f,    matrix_det_raw_f ,
-#define IN_1MATRIX_OUT_DOUBLE_IN    "matrix",           "matrix_sym"    ,         "matrix",         
-#define IN_1MATRIX_OUT_DOUBLE_OUT   -18570.0,           1,                          -18570.0,       
+#define IN_1MATRIX_OUT_DOUBLE_IN    "matrix",           "matrix_sym"    ,         "small_matrix",         
+#define IN_1MATRIX_OUT_DOUBLE_OUT   18050975087175425437419493266611272461930856827738418613105754898432.000000, 11018591242987731278480209809487334669634103274730489724827165526048.0, -18570.0,       
 #define IN_1MATRIX_OUT_DOUBLE_NAME  "matrix_det_plu_f", "matrix_det_cholesky_f",  "matrix_det_raw_f",
 
 #define IN_1MATRIX_OUT_MATRIX       matrix_transp_f,    matrix_inverse_plu_f,   matrix_inverse_cholesky_f,   matrix_inverse_raw_f,  
-#define IN_1MATRIX_OUT_MATRIX_IN    "matrix",           "matrix",               "matrix_sym"  ,              "matrix",             
-#define IN_1MATRIX_OUT_MATRIX_OUT   "matrix_transp",    "matrix_inv",           "matrix_sym_inv"  ,          "matrix_inv",         
+#define IN_1MATRIX_OUT_MATRIX_IN    "matrix",           "matrix",               "matrix_sym"  ,              "small_matrix",             
+#define IN_1MATRIX_OUT_MATRIX_OUT   "matrix_transp",    "matrix_inv",           "matrix_sym_inv"  ,          "matrix_small_inv",         
 #define IN_1MATRIX_OUT_MATRIX_NAME  "matrix_transp_f",  "matrix_inverse_plu_f", "matrix_inverse_cholesky_f", "matrix_inverse_raw_f"
 
 #define IN_2MATRIX_OUT_MATRIX       matrix_add_f,   matrix_mult_f,      matrix_mult_f,      matrix_solve_plu_f,         matrix_solve_cholesky_f,        matrix_solve_plu_f,             matrix_solve_raw_f,  
-#define IN_2MATRIX_OUT_MATRIX_IN0   "matrix",       "matrix",           "matrix",           "matrix",                   "matrix_sym",                   "matrix_sym",                   "matrix",            
-#define IN_2MATRIX_OUT_MATRIX_IN1   "matrix",       "matrix",           "B",                "B",                        "B",                            "B",                            "B",    
-#define IN_2MATRIX_OUT_MATRIX_OUT   "matrix_add",   "matrix_mult",      "vector_mult",      "X",                        "X_sym",                        "X_sym",                        "X",
+#define IN_2MATRIX_OUT_MATRIX_IN0   "matrix",       "matrix",           "matrix",           "matrix",                   "matrix_sym",                   "matrix_sym",                   "small_matrix",            
+#define IN_2MATRIX_OUT_MATRIX_IN1   "matrix",       "matrix",           "B",                "B",                        "B",                            "B",                            "B_small",    
+#define IN_2MATRIX_OUT_MATRIX_OUT   "matrix_add",   "matrix_mult",      "vector_mult",      "X",                        "X_sym",                        "X_sym",                        "X_small",
 #define IN_2MATRIX_OUT_MATRIX_NAME  "matrix_add_f", "matrix_mult_f",    "vector_mult_f",    "matrix_solve_plu_f",       "matrix_solve_cholesky_f",      "matrix_sym_solve_plu_f",       "matrix_solve_raw_f",
 
 #define IN_1MATRIX_1DOUBLE_OUT_MATRIX       matrix_mult_scalar_f
@@ -72,7 +72,7 @@ static int test_function_in_matrix_out_double_f(double(*function)(const matrix_t
     process_result(res);
     if (!res.result){
         printf("input:\n");
-        matrix_display(matrix);
+        matrix_display_exact(matrix, precision);
         printf("expected: %f\ngot: %f\n",expected, ret);
     }
     return(res.result);
@@ -87,7 +87,7 @@ static int test_function_in_matrix_out_matrix_f(matrix_t*(*function)(const matri
     process_result(res);
     if (!res.result){
         printf("input:\n");
-        matrix_display(matrix);
+        matrix_display_exact(matrix, precision);
         printf("expected:\n");
         matrix_display_exact(expected, precision);
         printf("got:\n");
@@ -106,9 +106,9 @@ static int test_function_in_2matrix_out_matrix_f(matrix_t*(*function)(const matr
     process_result(res);
     if (!res.result){
         printf("input1:\n");
-        matrix_display(matrix1);
+        matrix_display_exact(matrix1, precision);
         printf("input2:\n");
-        matrix_display(matrix2);
+        matrix_display_exact(matrix2, precision);
         printf("expected:\n");
         matrix_display_exact(expected, precision);
         printf("got:\n");
@@ -127,7 +127,7 @@ static int test_function_in_matrix_double_out_matrix_f(matrix_t*(*function)(cons
     process_result(res);
     if (!res.result){
         printf("input:\n");
-        matrix_display(matrix);
+        matrix_display_exact(matrix, precision);
         printf("expected:\n");
         matrix_display_exact(expected, precision);
         printf("got:\n");
@@ -146,7 +146,7 @@ static int test_function_in_matrix_int_out_matrix_f(matrix_t*(*function)(const m
     process_result(res);
     if (!res.result){
         printf("input:\n");
-        matrix_display(matrix);
+        matrix_display_exact(matrix, precision);
         printf("expected:\n");
         matrix_display_exact(expected, precision);
         printf("got:\n");
@@ -165,7 +165,7 @@ static int test_function_in_matrix_2int_out_matrix_f(matrix_t*(*function)(const 
     process_result(res);
     if (!res.result){
         printf("input:\n");
-        matrix_display(matrix);
+        matrix_display_exact(matrix, precision);
         printf("expected:\n");
         matrix_display_exact(expected, precision);
         printf("got:\n");

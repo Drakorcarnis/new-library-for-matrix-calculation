@@ -1,6 +1,5 @@
 #ifndef MATRIX
 #define MATRIX
-#include <complex.h>
 typedef struct {
     unsigned int rows;
     unsigned int columns;
