@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,7 +9,6 @@
 #include "matrix.h"
 #include "matrix_tools.h"
 #include "check.h"
-
 
 
 // Matrix creation functions
@@ -22,9 +22,11 @@ matrix_t * matrix_create(unsigned int rows, unsigned int columns)
     matrix->columns = columns;
     matrix->coeff = malloc(rows*sizeof(double *));
     if (!matrix->coeff) goto failed_coeff;
+    size_t size = (columns + 4-columns%4)* sizeof(double);
     for (; i < rows; i++){
-        matrix->coeff[i] = calloc(columns, sizeof(double));
+        matrix->coeff[i] = _mm_malloc (size, 32);
         if (!matrix->coeff[i]) goto failed_coeff_elt;
+        memset(matrix->coeff[i], 0, size);
     }
     return matrix;
 failed_coeff_elt:
@@ -122,31 +124,18 @@ matrix_t * matrix_mult_scalar_f(const matrix_t *matrix, double lambda)
     return mult_matrix;
 }
 
-static double avx_mult(int n, double *x, double *y)
+static inline double avx_mult(int n, double *x, double *y)
 {
-	int i;
-    int n8 = n>>3<<3;
-	__m256d vs1, vs2;
-	double s, t[4];
+	__m256d vs1;
+	double s = 0, t[4];
 	vs1 = _mm256_setzero_pd();
-	vs2 = _mm256_setzero_pd();
-	for (i = 0; i < n8; i += 8) {
-		__m256d vx1, vx2, vy1, vy2;
-		vx1 = _mm256_loadu_pd(&x[i]);
-		vx2 = _mm256_loadu_pd(&x[i+4]);
-		vy1 = _mm256_loadu_pd(&y[i]);
-		vy2 = _mm256_loadu_pd(&y[i+4]);
-		vs1 = _mm256_add_pd(vs1, _mm256_mul_pd(vx1, vy1));
-		vs2 = _mm256_add_pd(vs2, _mm256_mul_pd(vx2, vy2));
+	for (int i = 0; i < n; i += 4) {
+        __m256d vx1 = _mm256_load_pd(&x[i]);
+        __m256d vy1 = _mm256_load_pd(&y[i]);
+        vs1 = _mm256_fmadd_pd(vx1, vy1, vs1);
 	}
-	for (s = 0.0f; i < n; ++i){
-        s += x[i] * y[i];
-    }
-    
 	_mm256_storeu_pd(t, vs1);
-	s += t[0] + t[1] + t[2] + t[3];
-	_mm256_storeu_pd(t, vs2);
-	s += t[0] + t[1] + t[2] + t[3];
+	s = t[0] + t[1] + t[2] + t[3];
 	return s;
 }
     
@@ -158,6 +147,7 @@ matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
         fprintf(stderr, "%s: not multiplicable matrix (matrix2->rows != matrix1->columns)\n", __func__);
         return NULL;
     }
+    int step = 16;
    	unsigned int i, j, n = matrix1->rows, m = matrix2->columns;
     matrix_t *mult = matrix_create(matrix1->columns, matrix2->columns);
     if(!sanity_check((void *)mult, __func__))return NULL; 
@@ -167,9 +157,13 @@ matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
     #pragma omp parallel private(i, j) num_threads(8)
 	{
         #pragma omp for schedule(static)
-        for (i = 0; i < n; i++) {
-            for (j = 0; j < m; j++) {
-                coeff[i][j] = avx_mult(n, matrix1->coeff[i], columns->coeff[j]);
+        for (i = 0; i < n; i+=step) {
+            for (j = 0; j < m; j+=step) {
+                int je = m < j+step ? m : j+step;
+                int ie = n < i+step ? n : i+step;
+                for (int ii = i; ii < ie; ++ii)
+                    for (int jj = j; jj < je; ++jj)
+                        coeff[ii][jj] += avx_mult(n, matrix1->coeff[ii], columns->coeff[jj]);
             }
         }
     }
