@@ -7,9 +7,9 @@ PROF_DIR = ../prof
 # Common compiler flags
 #
 CC     = gcc
-CFLAGS = -Wall -Werror -Wextra
+CFLAGS = -Wall -Werror -Wextra -std=c18
 LDFLAGS = -lm -lgomp
-SOFLAGS = -shared -fPIC -fopenmp -mavx
+SOFLAGS = -shared -fPIC -fopenmp -march=native -ftree-vectorize
 
 BINDIR = ../bin
 BINDBGDIR = $(BINDIR)/debug
@@ -56,7 +56,7 @@ $(OBJDBGDIR)/%.o: %.c
 #
 LIBRELEXE = $(LIBRELDIR)/$(LIB_SO)
 LIBRELOBJS = $(addprefix $(OBJLIBRELDIR)/, $(LIB_OBJS))
-RELCFLAGS = -O2 -DNDEBUG
+RELCFLAGS = -O3 -DNDEBUG
 RELLDFLAGS = -L$(LIBRELDIR) -lmatrix
 $(OBJLIBRELDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES)
@@ -155,7 +155,7 @@ coverage: reg
 profile: reg
 	mkdir -p $(PROF_DIR)
 	rm -f $(PROF_DIR)/callgrind.out
-	LD_LIBRARY_PATH="$(LIBDBGDIR)" valgrind  --tool=callgrind --simulate-cache=yes --callgrind-out-file=$(PROF_DIR)/callgrind.out $(TESTRELEXE) 300
+	LD_LIBRARY_PATH="$(LIBDBGDIR)" valgrind  --tool=callgrind --simulate-cache=yes --callgrind-out-file=$(PROF_DIR)/callgrind.out $(REGEXE)
 	kcachegrind $(PROF_DIR)/callgrind.out
 
 clean:
