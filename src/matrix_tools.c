@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,16 +18,17 @@ static int sanity_check(const void *pointer, const char *function_name)
     return 1;
 }
 
-static double str2double(const char *str, int len)
+static double str2double(const char *str, unsigned int len)
 {
     char *num = calloc(len+1, sizeof(char));
     char *den = calloc(len+1, sizeof(char));
     if ((!num) || (!den)){
-        perror("alloc failed");
+        perror(__func__);
+        fprintf(stderr, "Wanna alloc %d\n", len+1); 
         return -1;
     }
     den[0] = '1';
-    for (int i = 0; i < len; i++) {
+    for (unsigned int i = 0; i < len; i++) {
         if (str[i] == '/'){
             memcpy(den, str+i+1, len-i-1);
             break;
@@ -96,7 +98,7 @@ matrix_t * matrix_symetric_random(int rows, int columns)
 
 matrix_t * str2matrix(int argc, char **argv, char separator)
 {
-    unsigned int i, j, columns = 0, len, trigger, flag = 0, count;
+    unsigned int i, j, columns = 0, len, trigger, flag = 0, count, size;
     matrix_t *matrix = NULL;
     for (i = 0; i < (unsigned int)argc; i++) {
         count = 0;
@@ -113,19 +115,20 @@ matrix_t * str2matrix(int argc, char **argv, char separator)
     }
     matrix = matrix_create(argc, columns);
     for (i = 0; i < matrix->rows; i++) {
-        len=0;
-        flag=0;
-        trigger=0;
-        for (j = 0; j <= (unsigned int)strlen(argv[i]); j++) {
-            if(argv[i][j] != separator && argv[i][j] != '\t' && argv[i][j] != '\n' && argv[i][j] != '\r'){
-                if(!flag)trigger=j;
-                flag = 1;
-            } else {
-                if(flag)matrix->coeff[i][len++]=str2double(argv[i]+trigger,j-trigger);
-                flag = 0;
+        size = strlen(argv[i]);
+        len = 0;
+        flag = 0;
+        trigger = 0;
+            for (j = 0; j <= size; j++) {
+                if(argv[i][j] != separator && argv[i][j] != '\t' && argv[i][j] != '\n' && argv[i][j] != '\r'){
+                    if(!flag)trigger=j;
+                    flag = 1;
+                } else {
+                    if(flag)matrix->coeff[i][len++]=str2double(argv[i]+trigger,j-trigger);
+                    flag = 0;
+                }
             }
-        }
-        if(trigger < j && flag && len < columns)matrix->coeff[i][len]=str2double(argv[i]+trigger,j-trigger-1);
+        if(trigger <= size && flag && len < columns)matrix->coeff[i][len]=str2double(argv[i]+trigger,size-trigger);
     }
     return matrix;
 }
@@ -134,7 +137,7 @@ int matrix2file(matrix_t *matrix, char * filename)
 {
     FILE *fp = fopen(filename, "w");
     if(!fp){
-        perror("fopen");
+        perror(__func__);
         return 0;
     }
     _matrix_display(matrix, 15, fp);
@@ -146,7 +149,7 @@ matrix_t * file2matrix(char *filename)
 {
     FILE *fp = fopen(filename, "r");
     if(!fp){
-        perror("fopen");
+        perror(__func__);
         return NULL;
     }
     int argc = 0, i;
@@ -156,19 +159,19 @@ matrix_t * file2matrix(char *filename)
     matrix_t *matrix = NULL;
     char **argv = malloc(sizeof(char*));
     if(!argv){
-        perror("alloc failed");
+        perror(__func__);
         return NULL;
     }
     while ((read = getline(&line, &len, fp)) != -1) {
         if (read > 1 || ((read == 1) && (strcmp(line, "\n") != 0))){
             argv = realloc(argv, (argc + 1) * sizeof(char*));
             if(!argv){
-                perror("alloc failed");
+                perror(__func__);
                 goto finally;
             }
             argv[argc] = calloc(read+1, sizeof(char));
             if(!argv[argc]){
-                perror("alloc failed");
+                perror(__func__);
                 goto finally;
             }
             strncpy(argv[argc++], line, read);
@@ -211,7 +214,7 @@ char * format_time(const long long input_time, char* format)
     if(input_time<=0){ // Quickly handle case 0
         bufsz = snprintf(NULL, 0, "0%s", format);
         ret = malloc((bufsz+1)*sizeof(*ret));
-        if(!ret){perror("malloc");exit(0);}
+        if(!ret){perror(__func__);}
         snprintf(ret, bufsz, "0%s", format);
         return(ret);
     }
@@ -225,7 +228,7 @@ char * format_time(const long long input_time, char* format)
     bufsz = snprintf(NULL, 0, "%lld%s",timestamp[i],formats[i]);
     for (k=i+1; k < j && (bufsz += snprintf(NULL, 0, "%0*lld%s",width[k],timestamp[k],formats[k])); k++ );
     ret = malloc((bufsz+1)*sizeof(*ret));
-    if(!ret){perror("malloc");exit(0);}
+    if(!ret){perror(__func__);}
     bufsz = sprintf(ret, "%lld%s",timestamp[i],formats[i]);
     for (k=i+1; k < j && (bufsz +=(int)sprintf(ret + bufsz, "%0*lld%s",width[k],timestamp[k],formats[k])); k++ );
     return(ret);
