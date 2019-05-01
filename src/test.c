@@ -158,19 +158,19 @@ int main(int argc, char *argv[]) {
     rank = rank +1 -1;
     // matrix_t *matrix1 = file2matrix("4000.txt");
     matrix_t *matrix1 = matrix_random(rank,rank);
-    matrix_t *matrix2 = matrix_symetric_random(rank,rank);
-    matrix_t *matrix3 = matrix_random(rank,1);
+    // matrix_t *matrix2 = matrix_symetric_random(rank,rank);
+    // matrix_t *matrix3 = matrix_random(rank,1);
     if(!matrix1)return(-1);
-    if(!matrix2)return(-1);
-    if(!matrix3)return(-1);
-    printf("M1 =\n");
+    // if(!matrix2)return(-1);
+    // if(!matrix3)return(-1);
+    // printf("M1 =\n");
     
     // matrix2file(matrix1, "matrix1.txt");
-    matrix_display_exact(matrix1, 15);
-    printf("M2 =\n");
-    matrix_display_exact(matrix2, 15);
-    printf("M3 =\n");
-    matrix_display(matrix3);
+    // matrix_display_exact(matrix1, 15);
+    // printf("M2 =\n");
+    // matrix_display_exact(matrix2, 15);
+    // printf("M3 =\n");
+    // matrix_display(matrix3);
     
     // test_function_f(&matrix_transp_f,matrix1, "transp(M)");
     // test_matrix_add_f(matrix1, matrix2);
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
     // test_matrix_det_plu_f(matrix2);
     // test_matrix_det_cholesky_f(matrix2);
     matrix_free(matrix1);
-    matrix_free(matrix2);
-    matrix_free(matrix3);
+    // matrix_free(matrix2);
+    // matrix_free(matrix3);
     return 0;
 }

@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -7,13 +8,13 @@
 #include "matrix_tools.h"
 
 #define DATA_PATH "/home/Drakorcarnis/new_library/src/data"
-#define PRECISION 10
+#define PRECISION 11
 int precision = PRECISION;
 
-#define IN_1MATRIX_OUT_DOUBLE       matrix_det_plu_f,   matrix_det_cholesky_f,    matrix_det_raw_f ,
-#define IN_1MATRIX_OUT_DOUBLE_IN    "matrix",           "matrix_sym"    ,         "small_matrix",         
-#define IN_1MATRIX_OUT_DOUBLE_OUT   18050975087175425437419493266611272461930856827738418613105754898432.000000, 11018591242987731278480209809487334669634103274730489724827165526048.0, -18570.0,       
-#define IN_1MATRIX_OUT_DOUBLE_NAME  "matrix_det_plu_f", "matrix_det_cholesky_f",  "matrix_det_raw_f",
+#define IN_1MATRIX_OUT_DOUBLE       matrix_det_plu_f,   matrix_det_cholesky_f,    matrix_det_raw_f
+#define IN_1MATRIX_OUT_DOUBLE_IN    "matrix",           "matrix_sym"    ,         "small_matrix"     
+#define IN_1MATRIX_OUT_DOUBLE_OUT   18050975087175425437419493266611272461930856827738418613105754898432.000000, 11018591242987731278480209809487334669634103274730489724827165526048.0, -18570.0
+#define IN_1MATRIX_OUT_DOUBLE_NAME  "matrix_det_plu_f", "matrix_det_cholesky_f",  "matrix_det_raw_f"
 
 #define IN_1MATRIX_OUT_MATRIX       matrix_transp_f,    matrix_inverse_plu_f,   matrix_inverse_cholesky_f,   matrix_inverse_raw_f,  
 #define IN_1MATRIX_OUT_MATRIX_IN    "matrix",           "matrix",               "matrix_sym"  ,              "small_matrix",             
@@ -266,7 +267,7 @@ int main(int argc, char **argv) {
     matrix_t** test_function_in_1matrix_out_double_in_input = chartab2matrixtab(test_function_in_1matrix_out_double_in, size, data_path);
     double test_function_in_1matrix_out_double_out[] = {IN_1MATRIX_OUT_DOUBLE_OUT}; 
     for (int i = 0; i < size; i++)
-        if(!test_function_in_matrix_out_double_f(test_function_in_1matrix_out_double_f[i],test_function_in_1matrix_out_double_in_input[i], test_function_in_1matrix_out_double_out[i], test_function_in_1matrix_out_double_name[i]))ret=1;    
+        if(!test_function_in_matrix_out_double_f(test_function_in_1matrix_out_double_f[i],test_function_in_1matrix_out_double_in_input[i], test_function_in_1matrix_out_double_out[i], test_function_in_1matrix_out_double_name[i]))ret=1;  
     free_matrixtab(test_function_in_1matrix_out_double_in_input, size);
     
     matrix_t*(*test_function_in_1matrix_out_matrix_f[])(const matrix_t*) = {IN_1MATRIX_OUT_MATRIX};
