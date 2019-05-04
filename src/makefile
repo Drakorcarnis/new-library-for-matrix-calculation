@@ -6,10 +6,10 @@ PROF_DIR = ../prof
 #
 # Common compiler flags
 #
-CC     = gcc
-CFLAGS = -Wall -Werror -Wextra -std=c18
+CC     = gcc -pipe
+CFLAGS = -Wall -Werror -Wextra
 LDFLAGS = -lm -lgomp
-SOFLAGS = -shared -fPIC -fopenmp -march=native -ftree-vectorize
+SOFLAGS = -shared -fPIC -fopenmp -march=native
 
 BINDIR = ../bin
 BINDBGDIR = $(BINDIR)/debug
@@ -38,15 +38,15 @@ TEST_OBJS = $(TEST_SRCS:.c=.o)
 REG_OBJS = $(REG_SRCS:.c=.o)
 TEST_EXE  = test
 REGRESSION_EXE = regression
-LIB_SO  = libmatrix.so
+LIB  = matrix
 
 #
 # Lib Debug build settings
 #
-LIBDBGEXE = $(LIBDBGDIR)/$(LIB_SO)
+LIBDBGEXE = $(LIBDBGDIR)/lib$(LIB).so
 LIBDBGOBJS = $(addprefix $(OBJLIBDBGDIR)/, $(LIB_OBJS))
 DBGCFLAGS = -g -O0 -DDEBUG --coverage
-DBGLDFLAGS = -L$(LIBDBGDIR) -lmatrix
+DBGLDFLAGS = -L$(LIBDBGDIR) -l$(LIB)
 $(OBJLIBDBGDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES)
 $(OBJDBGDIR)/%.o: %.c
@@ -54,10 +54,10 @@ $(OBJDBGDIR)/%.o: %.c
 #
 # Lib Release build settings
 #
-LIBRELEXE = $(LIBRELDIR)/$(LIB_SO)
+LIBRELEXE = $(LIBRELDIR)/lib$(LIB).so
 LIBRELOBJS = $(addprefix $(OBJLIBRELDIR)/, $(LIB_OBJS))
-RELCFLAGS = -O3 -DNDEBUG
-RELLDFLAGS = -L$(LIBRELDIR) -lmatrix
+RELCFLAGS = -Ofast -DNDEBUG  -fno-trapping-math -fopt-info-vec-missed 
+RELLDFLAGS = -L$(LIBRELDIR) -l$(LIB)
 $(OBJLIBRELDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES)
 $(OBJRELDIR)/%.o: %.c
@@ -77,13 +77,16 @@ TESTRELOBJS = $(addprefix $(OBJRELDIR)/, $(TEST_OBJS))
 #
 # Regression build settings
 #
-REGEXE = $(BINDBGDIR)/$(REGRESSION_EXE)
-REGOBJS = $(addprefix $(OBJDBGDIR)/, $(REG_OBJS))
+REGDBGEXE = $(BINDBGDIR)/$(REGRESSION_EXE)
+REGDBGOBJS = $(addprefix $(OBJDBGDIR)/, $(REG_OBJS))
 
-.PHONY: all clean debug prep release remake testdebug testrelease reg coverage profile
+REGRELEXE = $(BINRELDIR)/$(REGRESSION_EXE)
+REGRELOBJS = $(addprefix $(OBJRELDIR)/, $(REG_OBJS))
+
+.PHONY: prep all clean debug release remake testdebug testrelease regdebug regrelease coverage profile
 
 # Default build
-all: prep release debug testdebug testrelease reg
+all: debug release testdebug testrelease regdebug regrelease
 
 #
 # Debug rules
@@ -121,10 +124,15 @@ $(TESTRELEXE): $(TESTRELOBJS)
 #
 # Regression rules
 #
-reg: debug $(REGEXE)
+regdebug: debug $(REGDBGEXE)
 
-$(REGEXE): $(REGOBJS)
-	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(REGEXE) $^ $(DBGLDFLAGS) $(LDFLAGS)
+$(REGDBGEXE): $(REGDBGOBJS)
+	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(REGDBGEXE) $^ $(DBGLDFLAGS) $(LDFLAGS)
+    
+regrelease: release $(REGRELEXE)
+
+$(REGRELEXE): $(REGRELOBJS)
+	$(CC) $(CFLAGS) $(RELCFLAGS) -o $(REGRELEXE) $^ $(RELLDFLAGS) $(LDFLAGS)
 
 #
 # Other rules
@@ -135,13 +143,11 @@ prep:
 	@mkdir -p $(LIBDIR) $(LIBDBGDIR) $(LIBRELDIR)
 	@mkdir -p $(OBJLIBDIR) $(OBJLIBDBGDIR) $(OBJLIBRELDIR)
 
-remake: clean all
-
 .ONESHELL:
 
-coverage: reg
+coverage: regdebug
 	@rm -f $(LIBDBGDIR)/*.gcda $(LIBDBGDIR)/*.gcda
-	@LD_LIBRARY_PATH="$(LIBDBGDIR)" $(REGEXE)
+	@LD_LIBRARY_PATH="$(LIBDBGDIR)" $(REGDBGEXE)
 	@rm -f *.gcda *.gcno
 	@cp $(OBJLIBDBGDIR)/*.gcno .
 	@cp $(OBJLIBDBGDIR)/*.gcda .
@@ -152,10 +158,10 @@ coverage: reg
 	@rm -f *.gc* coverage.info
 	firefox $(COV_DIR)/index.html &
 
-profile: reg
+profile: regrelease
 	mkdir -p $(PROF_DIR)
 	rm -f $(PROF_DIR)/callgrind.out
-	LD_LIBRARY_PATH="$(LIBDBGDIR)" valgrind  --tool=callgrind --simulate-cache=yes --callgrind-out-file=$(PROF_DIR)/callgrind.out $(REGEXE)
+	LD_LIBRARY_PATH="$(LIBRELDIR)" valgrind  --tool=callgrind --simulate-cache=yes --callgrind-out-file=$(PROF_DIR)/callgrind.out $(TESTRELEXE) 500
 	kcachegrind $(PROF_DIR)/callgrind.out
 
 clean:
@@ -163,7 +169,8 @@ clean:
 	        $(LIBDBGEXE)  $(LIBDBGOBJS)             \
 	        $(TESTDBGEXE) $(TESTDBGOBJS)            \
 	        $(TESTRELEXE) $(TESTRELOBJS)            \
-	        $(REGEXE)     $(REGOBJS)                \
+	        $(REGDBGEXE)  $(REGDBGOBJS)             \
+	        $(REGRELEXE)  $(REGRELOBJS)             \
 	        $(OBJLIBDBGDIR)/*.gc* $(OBJDBGDIR)/*.gc*
 	@rm -fd $(OBJLIBRELDIR)  $(OBJLIBDBGDIR) $(OBJLIBDIR)   \
 	        $(LIBRELDIR) $(LIBDBGDIR) $(LIBDIR)             \
