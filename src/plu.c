@@ -37,6 +37,12 @@ static void plu_free(plu_t *plu)
     matrix_free(plu->U);
     free(plu);   
 }
+static inline void matrix_row_permute(matrix_t *matrix, int i, int j)
+{
+    double *tmp = matrix->coeff[i];
+    matrix->coeff[i] = matrix->coeff[j];
+    matrix->coeff[j] = tmp;
+}
 
 static plu_t * matrix_plu_f(const matrix_t *matrix)
 {
@@ -44,58 +50,84 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
     if(!square_check(matrix, __func__))return NULL;
     unsigned int p, n = matrix->rows;
     plu_t *plu = plu_create(n); 
-    matrix_t *A = matrix_copy(matrix), *L = plu->L, *U = plu->U;
-    matrix_t *perm, *perm_mult;
-    double sum, tmp;
+    matrix_t *M = matrix_copy(matrix);
+    double **A = M->coeff, **L = plu->L->coeff, **U = plu->U->coeff;
+    double sum;
+    long long time = mstime();
     for (unsigned int i = 0; i < n; i++)
     {
         for (unsigned int j = i; j < n; j++){
             sum = 0;
-            for (unsigned int k = 0; k < i; k++)sum += L->coeff[j][k] * U->coeff[k][i];
-            L->coeff[j][i] = A->coeff[j][i] - sum;
+            for (unsigned int k = 0; k < i; k++)
+                sum += L[j][k] * U[i][k];
+            L[j][i] = A[j][i] - sum;
         }
-        // permutations de lignes si pivot nul 
         p = i;
-        while((p < n-1) && L->coeff[p][i] == 0 && ++p);
+        while((p < n-1) && L[p][i] == 0 && ++p);
         if (p != i)
         {
-            perm = matrix_permutation(p, i, n);
-            perm_mult = matrix_mult_f(perm, plu->P);
-            matrix_free(perm);
-            matrix_free(plu->P);
-            plu->P = perm_mult;
-            plu->nb_perm+=1;
-            for (unsigned int j = 0; j < n; j++){
-                tmp = A->coeff[i][j];
-                A->coeff[i][j] = A->coeff[p][j];
-                A->coeff[p][j] = tmp;
-            }
-            for (unsigned int j = 0; j < n; j++){
-                tmp = L->coeff[i][j];
-                L->coeff[i][j] = L->coeff[p][j];
-                L->coeff[p][j] = tmp;
-            }
-        } // Fin des permutations
+            matrix_row_permute(plu->P, p, i);
+            matrix_row_permute(plu->L, p, i);
+            matrix_row_permute(M, p, i);
+            plu->nb_perm++;
+        }
         for (unsigned int j = i+1; j < n; j++)
         {
             sum = 0;
-            for (unsigned int k = 0; k < i; k++){
-                sum += L->coeff[i][k] * U->coeff[k][j];
-            }  
-            U->coeff[i][j] = (A->coeff[i][j] - sum) / L->coeff[i][i];
+            for (unsigned int k = 0; k < i; k++)
+                sum += L[i][k] * U[j][k];
+            U[j][i] = (A[i][j] - sum) / L[i][i];
         }
     }
-    matrix_free(A);
+    printf("plu: %s\n", format_time(mstime()-time, "ms"));
+    matrix_free(M);
+    matrix_t *trueU = matrix_transp_f(plu->U);
+    matrix_free(plu->U);
+    plu->U = trueU;
     return(plu);  
 }
 
+static matrix_t * matrix_solve_low_trig(const matrix_t *A, const matrix_t *B)
+{
+    if(!sanity_check((void *)A, __func__))return NULL;
+    if(!square_check(A, __func__))return NULL; 
+    unsigned int n = A->rows;
+    unsigned int m = B->columns;
+    matrix_t *X = matrix_transp_f(B);
+    for (unsigned int i = 0; i < m; i++){
+        for (unsigned int j = 0; j < n; j++){
+            for (unsigned int k = 0; k < j; k++)
+                X->coeff[i][j] -= X->coeff[i][k] * A->coeff[j][k];
+            X->coeff[i][j] /= A->coeff[j][j];
+        }
+    }
+    return(matrix_transp_f(X));
+}
+
+static matrix_t * matrix_solve_up_trig(const matrix_t *A, const matrix_t *B)
+{
+    if(!sanity_check((void *)A, __func__))return NULL;
+    if(!square_check(A, __func__))return NULL; 
+    unsigned int n = A->rows;
+    unsigned int m = B->columns;
+    matrix_t *X = matrix_transp_f(B);
+    for (unsigned int i = 0; i < m; i++){
+        for (int j = n - 1; j >= 0; j--){
+            for (int k = n - 1; k > j; k--)
+                X->coeff[i][j] -= X->coeff[i][k] * A->coeff[j][k];
+            X->coeff[i][j] /= A->coeff[j][j];
+        }
+    }
+    return(matrix_transp_f(X));
+}
 double matrix_det_plu_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return 0;
     if(!square_check(matrix, __func__))return 0; 
     plu_t *plu = matrix_plu_f(matrix);
     double det = pow(-1.0, plu->nb_perm);
-    for (unsigned int i=0; i < plu->L->rows; i++)det *= plu->L->coeff[i][i];
+    for (unsigned int i=0; i < plu->L->rows; i++)
+        det *= plu->L->coeff[i][i];
     plu_free(plu);
     return det;
 }
@@ -105,22 +137,21 @@ matrix_t * matrix_solve_plu_f(const matrix_t *A, const matrix_t *B)
     if(!sanity_check((void *)A, __func__))return NULL;
     if(!square_check(A, __func__))return NULL; 
     plu_t *plu = matrix_plu_f(A);
+    long long time = mstime();
     matrix_t *transp_perm = matrix_transp_f(plu->P);
     matrix_t *new_B = matrix_mult_f(transp_perm, B);
+    printf("perm+mult: %s\n", format_time(mstime()-time, "ms"));
     matrix_free(transp_perm);
-    matrix_t *Z = matrix_solve_diag_inf(plu->L, new_B);
+    time = mstime();
+    matrix_t *Z = matrix_solve_low_trig(plu->L, new_B);
+    printf("diag inf: %s\n", format_time(mstime()-time, "ms"));
     matrix_free(new_B);
-    matrix_t *X = matrix_solve_diag_sup(plu->U, Z);
+    time = mstime();
+    matrix_t *X = matrix_solve_up_trig(plu->U, Z);
+    printf("diag sup: %s\n", format_time(mstime()-time, "ms"));
     matrix_free(Z);
     plu_free(plu);
-    matrix_t *ret = matrix_create(A->rows,B->columns);
-    for (unsigned int i=0; i < A->rows; i++){
-        for (unsigned int j=0; j < B->columns; j++){
-            ret->coeff[i][j] = X->coeff[i][j];
-        }
-    }
-    matrix_free(X);
-    return(ret);
+    return(X);
 } 
 
 matrix_t * matrix_inverse_plu_f(const matrix_t *matrix)

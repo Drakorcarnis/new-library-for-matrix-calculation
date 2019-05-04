@@ -24,8 +24,6 @@ matrix_t *  matrix_mult_scalar_f(const matrix_t *matrix, double lambda);        
 matrix_t *  matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2);                // Return matrix1 * matrix2
 matrix_t *  matrix_pow_f(const matrix_t *matrix, int pow);                                  // Return matrix^pow
 matrix_t *  matrix_shrink_f(const matrix_t *matrix, unsigned int skipped_row, unsigned int skipped_column);   // Return copy of matrix without 'skipped_row' and 'skipped_column'
-matrix_t *  matrix_solve_diag_inf(const matrix_t *A, const matrix_t *B);                    // Resolve AX=B with A being an inferior-diagonal matrix. Return X
-matrix_t *  matrix_solve_diag_sup(const matrix_t *A, const matrix_t *B);                    // Resolve AX=B with A being an superior-diagonal matrix. Return X
 
 // Raw methods. For fun only. Do never use them, cuz you've NO reason to use them. Really.
 double matrix_det_raw_f(const matrix_t *matrix);                               // Return |matrix| with brute force method

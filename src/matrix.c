@@ -24,7 +24,7 @@ matrix_t * matrix_create(unsigned int rows, unsigned int columns)
     if (!matrix->coeff) goto failed_coeff;
     size_t size = (columns + 4-columns%4)* sizeof(double);
     for (; i < rows; i++){
-        matrix->coeff[i] = _mm_malloc (size, 32);
+        matrix->coeff[i] = _mm_malloc (size, 64);
         if (!matrix->coeff[i]) goto failed_coeff_elt;
         memset(matrix->coeff[i], 0, size);
     }
@@ -44,20 +44,6 @@ matrix_t * matrix_identity(unsigned int n)
     matrix_t * matrix = matrix_create(n, n);
     for (unsigned int i = 0; i < n; i++) matrix->coeff[i][i] = 1;
     return matrix;
-}
-
-matrix_t * matrix_permutation(unsigned int line1, unsigned int line2, unsigned int n)
-{
-    double tmp;
-    matrix_t * matrix = matrix_identity(n);
-    for (unsigned int i = 0; i < n; i++){
-        tmp = matrix->coeff[line1][i];
-        matrix->coeff[line1][i] = matrix->coeff[line2][i];
-        matrix->coeff[line2][i] = tmp;
-    }
-    matrix_t * transpose = matrix_transp_f(matrix);
-    matrix_free(matrix);
-    return(transpose);
 }
 
 matrix_t * matrix_copy(const matrix_t *matrix)
@@ -89,9 +75,10 @@ matrix_t * matrix_transp_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL; 
     matrix_t *transpose_matrix = matrix_create(matrix->columns, matrix->rows);
-    for (unsigned int i = 0; i < transpose_matrix->rows; i++) {
-        for (unsigned int j = 0; j < transpose_matrix->columns; j++)transpose_matrix->coeff[i][j]=matrix->coeff[j][i];
-    }
+    #pragma omp parallel for
+    for (unsigned int i = 0; i < transpose_matrix->rows; i++)
+        for (unsigned int j = 0; j < transpose_matrix->columns; j++)
+            transpose_matrix->coeff[i][j]=matrix->coeff[j][i];
     return transpose_matrix;
 }
 
@@ -124,21 +111,6 @@ matrix_t * matrix_mult_scalar_f(const matrix_t *matrix, double lambda)
     return mult_matrix;
 }
 
-static inline double avx_mult(int n, double *x, double *y)
-{
-	__m256d vs1;
-	double s = 0, t[4];
-	vs1 = _mm256_setzero_pd();
-	for (int i = 0; i < n; i += 4) {
-        __m256d vx1 = _mm256_load_pd(&x[i]);
-        __m256d vy1 = _mm256_load_pd(&y[i]);
-        vs1 = _mm256_fmadd_pd(vx1, vy1, vs1);
-	}
-	_mm256_storeu_pd(t, vs1);
-	s = t[0] + t[1] + t[2] + t[3];
-	return s;
-}
-    
 matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
 {
     if(!sanity_check((void *)matrix1, __func__))return NULL; 
@@ -148,22 +120,22 @@ matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
         return NULL;
     }
     int step = 16;
-   	unsigned int i, j, n = matrix1->rows, m = matrix2->columns;
+   	unsigned int n = matrix1->rows, m = matrix2->columns;
     matrix_t *mult = matrix_create(matrix1->columns, matrix2->columns);
     if(!sanity_check((void *)mult, __func__))return NULL; 
     matrix_t *columns = matrix_transp_f(matrix2);
     if(!sanity_check((void *)columns, __func__))return NULL; 
-    double ** coeff = mult->coeff;
-    #pragma omp parallel private(i, j) num_threads(8)
-	{
-        #pragma omp for schedule(static)
-        for (i = 0; i < n; i+=step) {
-            for (j = 0; j < m; j+=step) {
-                int je = m < j+step ? m : j+step;
-                int ie = n < i+step ? n : i+step;
-                for (int ii = i; ii < ie; ++ii)
-                    for (int jj = j; jj < je; ++jj)
-                        coeff[ii][jj] += avx_mult(n, matrix1->coeff[ii], columns->coeff[jj]);
+    #pragma omp parallel for
+    for (unsigned int i = 0; i < n; i+=step) {
+        for (unsigned int j = 0; j < m; j+=step) {
+            int je = m < j+step ? m : j+step;
+            int ie = n < i+step ? n : i+step;
+            for (int ii = i; ii < ie; ii++){
+                for (int jj = j; jj < je; jj++){
+                    double s = 0;
+                    for (unsigned int k = 0; k < n; k++)s+=matrix1->coeff[ii][k]*columns->coeff[jj][k];
+                    mult->coeff[ii][jj] += s;
+                }
             }
         }
     }
@@ -174,19 +146,15 @@ matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
 matrix_t * matrix_pow_f(const matrix_t *matrix, int pow)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;  
-    if(!square_check(matrix, __func__))return NULL; 
-    matrix_t *pow_matrix = matrix_copy(matrix);
-    matrix_t *tmp_matrix;
+    if(!square_check(matrix, __func__))return NULL;
+    matrix_t *tmp_matrix0 = matrix_copy(matrix);
+    matrix_t *tmp_matrix1;
     for (int i = 0; i < pow-1; i++) {
-        tmp_matrix = matrix_mult_f(pow_matrix, matrix);
-        for (unsigned int j = 0; j < pow_matrix->rows; j++) {
-            for (unsigned int k = 0; k < pow_matrix->columns; k++) {
-                pow_matrix->coeff[j][k] = tmp_matrix->coeff[j][k];
-            }
-        }
-        matrix_free(tmp_matrix);
+        tmp_matrix1 = matrix_mult_f(tmp_matrix0, matrix);
+        matrix_free(tmp_matrix0);
+        tmp_matrix0 = tmp_matrix1;
     }
-    return pow_matrix;
+    return tmp_matrix0;
 }
 
 matrix_t * matrix_shrink_f(const matrix_t *matrix, unsigned int skipped_row, unsigned int skipped_column)
@@ -204,42 +172,6 @@ matrix_t * matrix_shrink_f(const matrix_t *matrix, unsigned int skipped_row, uns
         l++;
     }
     return shrink_matrix;
-}
-
-matrix_t * matrix_solve_diag_inf(const matrix_t *A, const matrix_t *B)
-{
-    if(!sanity_check((void *)A, __func__))return NULL;
-    if(!square_check(A, __func__))return NULL; 
-    unsigned int n = A->rows;
-    unsigned int m = B->columns;
-    matrix_t *X = matrix_create(n, n);
-    for (unsigned int i = 0; i < m; i++)
-    {
-        for (unsigned int j = 0; j < n; j++)
-        {
-            X->coeff[j][i] = B->coeff[j][i];
-            for (unsigned int k = 0; k < j; k++)X->coeff[j][i] =  X->coeff[j][i] - X->coeff[k][i] * A->coeff[j][k];
-            X->coeff[j][i] = X->coeff[j][i] / A->coeff[j][j];
-        }
-    }
-    return(X);
-}
-
-matrix_t * matrix_solve_diag_sup(const matrix_t *A, const matrix_t *B)
-{
-    if(!sanity_check((void *)A, __func__))return NULL;
-    if(!square_check(A, __func__))return NULL; 
-    unsigned int n = A->rows;
-    unsigned int m = B->columns;
-    matrix_t *X = matrix_create(n, n);
-    for (unsigned int i = 0; i < m; i++){
-        for (int j = n - 1; j >= 0; j--){
-            X->coeff[j][i] = B->coeff[j][i];
-            for (int k = n - 1; k > j; k--)X->coeff[j][i] =  X->coeff[j][i] - X->coeff[k][i] * A->coeff[j][k];
-            X->coeff[j][i] = X->coeff[j][i] / A->coeff[j][j];
-        }
-    }
-    return(X);
 }
  
 // Methods based upon raw determinant calculation. For fun only. Do never use them, cuz you've NO reason to use them. Really.

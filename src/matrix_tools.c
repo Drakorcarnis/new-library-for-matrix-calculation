@@ -223,8 +223,8 @@ char * format_time(const long long input_time, char* format)
         for (j = scale - 1; j > i; j--)timestamp[i] = timestamp[i]/timescales[j];
         if(i > 0)timestamp[i] = timestamp[i]%timescales[i];
     }
-    for (i=0; i < scale && timestamp[i] == 0; i++ );
-    for (j=scale; j > i && timestamp[j] == 0; j-- );
+    for (i=0; i < scale && timestamp[i] == 0; i++);
+    for (j=scale; j > i && timestamp[j] == 0; j--);
     bufsz = snprintf(NULL, 0, "%lld%s",timestamp[i],formats[i]);
     for (k=i+1; k < j && (bufsz += snprintf(NULL, 0, "%0*lld%s",width[k],timestamp[k],formats[k])); k++ );
     ret = malloc((bufsz+1)*sizeof(*ret));
