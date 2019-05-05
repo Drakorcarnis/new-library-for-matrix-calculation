@@ -39,12 +39,12 @@ int precision = PRECISION;
 #define IN_1MATRIX_1INT_OUT_MATRIX_OUT  "matrix_pow"
 #define IN_1MATRIX_1INT_OUT_MATRIX_NAME "matrix_pow_f"
 
-#define IN_1MATRIX_2INT_OUT_MATRIX      matrix_shrink_f
-#define IN_1MATRIX_2INT_OUT_MATRIX_IN0  "matrix"
-#define IN_1MATRIX_2INT_OUT_MATRIX_IN1  0
-#define IN_1MATRIX_2INT_OUT_MATRIX_IN2  1
-#define IN_1MATRIX_2INT_OUT_MATRIX_OUT  "matrix_shrink"
-#define IN_1MATRIX_2INT_OUT_MATRIX_NAME "matrix_shrink_f"
+#define IN_1MATRIX_2INT_OUT_MATRIX      
+#define IN_1MATRIX_2INT_OUT_MATRIX_IN0  
+#define IN_1MATRIX_2INT_OUT_MATRIX_IN1  
+#define IN_1MATRIX_2INT_OUT_MATRIX_IN2  
+#define IN_1MATRIX_2INT_OUT_MATRIX_OUT  
+#define IN_1MATRIX_2INT_OUT_MATRIX_NAME 
 
 typedef struct {
     char *test_name;

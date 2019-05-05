@@ -6,8 +6,8 @@
 #include "check.h"
 
 typedef struct {
-    int nb_perm;
-    matrix_t *P;
+    unsigned int nb_perm;
+    unsigned int (*perm)[2];
     matrix_t *L;
     matrix_t *U;
 } plu_t;
@@ -22,7 +22,6 @@ static plu_t * plu_create(unsigned int rank){
         perror(__func__);
         return NULL;
     }
-    plu->P = matrix_identity(rank);
     plu->L = matrix_create(rank, rank);
     plu->U = matrix_identity(rank);
     plu->nb_perm = 0;
@@ -32,9 +31,9 @@ static plu_t * plu_create(unsigned int rank){
 static void plu_free(plu_t *plu)
 {
     if(!sanity_check(plu, __func__))return; 
-    matrix_free(plu->P);
     matrix_free(plu->L);
     matrix_free(plu->U);
+    free(plu->perm);
     free(plu);   
 }
 static inline void matrix_row_permute(matrix_t *matrix, int i, int j)
@@ -53,30 +52,35 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
     matrix_t *M = matrix_copy(matrix);
     double **A = M->coeff, **L = plu->L->coeff, **U = plu->U->coeff;
     double sum;
+    int step = 16;
     long long time = mstime();
-    for (unsigned int i = 0; i < n; i++)
-    {
-        for (unsigned int j = i; j < n; j++){
-            sum = 0;
-            for (unsigned int k = 0; k < i; k++)
-                sum += L[j][k] * U[i][k];
-            L[j][i] = A[j][i] - sum;
+    for (unsigned int i = 0; i < n; i++){
+        for (unsigned int j = i; j < n; j+=step){
+            int je = n < j+step ? n : j+step;
+            for (int jj = j; jj < je; jj++){
+                sum = 0;
+                for (unsigned int k = 0; k < i; k++)
+                    sum += L[jj][k] * U[i][k];
+                L[jj][i] = A[jj][i] - sum;
+            }
         }
         p = i;
         while((p < n-1) && L[p][i] == 0 && ++p);
-        if (p != i)
-        {
-            matrix_row_permute(plu->P, p, i);
+        if (p != i){
             matrix_row_permute(plu->L, p, i);
             matrix_row_permute(M, p, i);
-            plu->nb_perm++;
+            plu->perm = realloc(plu->perm,++plu->nb_perm);
+            plu->perm[plu->nb_perm-1][0] = p;
+            plu->perm[plu->nb_perm-1][1] = i;
         }
-        for (unsigned int j = i+1; j < n; j++)
-        {
-            sum = 0;
-            for (unsigned int k = 0; k < i; k++)
-                sum += L[i][k] * U[j][k];
-            U[j][i] = (A[i][j] - sum) / L[i][i];
+        for (unsigned int j = i+1; j < n; j+=step){
+            int je = n < j+step ? n : j+step;
+            for (int jj = j; jj < je; jj++){
+                sum = 0;
+                for (unsigned int k = 0; k < i; k++)
+                    sum += L[i][k] * U[jj][k];
+                U[jj][i] = (A[i][jj] - sum) / L[i][i];
+            }
         }
     }
     printf("plu: %s\n", format_time(mstime()-time, "ms"));
@@ -93,12 +97,20 @@ static matrix_t * matrix_solve_low_trig(const matrix_t *A, const matrix_t *B)
     if(!square_check(A, __func__))return NULL; 
     unsigned int n = A->rows;
     unsigned int m = B->columns;
+    int step = 16;
     matrix_t *X = matrix_transp_f(B);
-    for (unsigned int i = 0; i < m; i++){
-        for (unsigned int j = 0; j < n; j++){
-            for (unsigned int k = 0; k < j; k++)
-                X->coeff[i][j] -= X->coeff[i][k] * A->coeff[j][k];
-            X->coeff[i][j] /= A->coeff[j][j];
+    for (unsigned int i = 0; i < m; i+=step){
+        int ie = m < i+step ? m : i+step;
+        for (unsigned int j = 0; j < n; j+=step){
+            int je = n < j+step ? n : j+step;
+            for (int ii = i; ii < ie; ii++){
+                for (int jj = j; jj < je; jj++){
+                    double sum = X->coeff[ii][jj];
+                    for (int k = 0; k < jj; k++)
+                        sum -= X->coeff[ii][k] * A->coeff[jj][k];
+                    X->coeff[ii][jj] = sum / A->coeff[jj][jj];
+                }
+            }
         }
     }
     return(matrix_transp_f(X));
@@ -108,14 +120,22 @@ static matrix_t * matrix_solve_up_trig(const matrix_t *A, const matrix_t *B)
 {
     if(!sanity_check((void *)A, __func__))return NULL;
     if(!square_check(A, __func__))return NULL; 
-    unsigned int n = A->rows;
-    unsigned int m = B->columns;
+    int n = A->rows;
+    int m = B->columns;
+    int step = 16;
     matrix_t *X = matrix_transp_f(B);
-    for (unsigned int i = 0; i < m; i++){
-        for (int j = n - 1; j >= 0; j--){
-            for (int k = n - 1; k > j; k--)
-                X->coeff[i][j] -= X->coeff[i][k] * A->coeff[j][k];
-            X->coeff[i][j] /= A->coeff[j][j];
+    for (int i = 0; i < m; i+=step){
+        int ie = m < i+step ? m : i+step;
+        for (int j = n - 1; j >= 0; j-=step){
+            int je = 0 >= j-step ? 0 : j-step;
+            for (int ii = i; ii < ie; ii++){
+                for (int jj = j-1; jj >= je; jj--){
+                    double sum = X->coeff[ii][jj];
+                    for (int k = n - 1; k > jj; k--)
+                        sum -= X->coeff[ii][k] * A->coeff[jj][k];
+                    X->coeff[ii][jj] = sum / A->coeff[jj][jj];
+                }
+            }
         }
     }
     return(matrix_transp_f(X));
@@ -138,14 +158,14 @@ matrix_t * matrix_solve_plu_f(const matrix_t *A, const matrix_t *B)
     if(!square_check(A, __func__))return NULL; 
     plu_t *plu = matrix_plu_f(A);
     long long time = mstime();
-    matrix_t *transp_perm = matrix_transp_f(plu->P);
-    matrix_t *new_B = matrix_mult_f(transp_perm, B);
-    printf("perm+mult: %s\n", format_time(mstime()-time, "ms"));
-    matrix_free(transp_perm);
+    matrix_t *permB = matrix_copy(B);
+    for (unsigned int i = 0; i < plu->nb_perm; i++)
+        matrix_row_permute(permB, plu->perm[i][0], plu->perm[i][1]);
+    printf("perm: %s\n", format_time(mstime()-time, "ms"));
     time = mstime();
-    matrix_t *Z = matrix_solve_low_trig(plu->L, new_B);
+    matrix_t *Z = matrix_solve_low_trig(plu->L, permB);
     printf("diag inf: %s\n", format_time(mstime()-time, "ms"));
-    matrix_free(new_B);
+    matrix_free(permB);
     time = mstime();
     matrix_t *X = matrix_solve_up_trig(plu->U, Z);
     printf("diag sup: %s\n", format_time(mstime()-time, "ms"));

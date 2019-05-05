@@ -30,7 +30,7 @@ OBJLIBRELDIR = $(OBJLIBDIR)/release
 # Project files
 #
 INCLUDES = includes
-LIB_SRCS = matrix.c matrix_tools.c plu.c cholesky.c check.c
+LIB_SRCS = matrix.c matrix_tools.c plu.c cholesky.c check.c raw.c
 TEST_SRCS = test.c
 REG_SRCS = regression.c
 LIB_OBJS = $(LIB_SRCS:.c=.o)
@@ -56,7 +56,7 @@ $(OBJDBGDIR)/%.o: %.c
 #
 LIBRELEXE = $(LIBRELDIR)/lib$(LIB).so
 LIBRELOBJS = $(addprefix $(OBJLIBRELDIR)/, $(LIB_OBJS))
-RELCFLAGS = -Ofast -DNDEBUG  -fno-trapping-math -fopt-info-vec-missed 
+RELCFLAGS = -Ofast -DNDEBUG  -fno-trapping-math -fopt-info-vec-optimized
 RELLDFLAGS = -L$(LIBRELDIR) -l$(LIB)
 $(OBJLIBRELDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES)

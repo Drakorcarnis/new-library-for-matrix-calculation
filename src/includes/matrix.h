@@ -23,7 +23,6 @@ matrix_t *  matrix_add_f(const matrix_t *matrix1, const matrix_t *matrix2);     
 matrix_t *  matrix_mult_scalar_f(const matrix_t *matrix, double lambda);                    // Return λ * matrix
 matrix_t *  matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2);                // Return matrix1 * matrix2
 matrix_t *  matrix_pow_f(const matrix_t *matrix, int pow);                                  // Return matrix^pow
-matrix_t *  matrix_shrink_f(const matrix_t *matrix, unsigned int skipped_row, unsigned int skipped_column);   // Return copy of matrix without 'skipped_row' and 'skipped_column'
 
 // Raw methods. For fun only. Do never use them, cuz you've NO reason to use them. Really.
 double matrix_det_raw_f(const matrix_t *matrix);                               // Return |matrix| with brute force method
