@@ -18,7 +18,7 @@ static int sanity_check(const void *pointer, const char *function_name)
     return 1;
 }
 
-static double str2double(const char *str, unsigned int len)
+static TYPE str2TYPE(const char *str, unsigned int len)
 {
     char *num = calloc(len+1, sizeof(char));
     char *den = calloc(len+1, sizeof(char));
@@ -36,7 +36,7 @@ static double str2double(const char *str, unsigned int len)
             num[i] = str[i];
         }
     }
-    double ret = strtod(num,NULL)/strtod(den,NULL);
+    TYPE ret = (TYPE)(strtod(num,NULL)/strtod(den,NULL));
     free(num);
     free(den);
     return ret;
@@ -44,7 +44,7 @@ static double str2double(const char *str, unsigned int len)
 
 static void _matrix_display(const matrix_t *matrix, int precision, FILE *stream)
 {
-    double val;
+    TYPE val;
     int len = 0;
     for (unsigned int i = 0; i < matrix->rows; i++) {
         if (!precision)
@@ -76,7 +76,7 @@ matrix_t * matrix_random(int rows, int columns)
     srand((unsigned int)time(NULL));
     for (unsigned int i = 0; i < matrix->rows; i++) {
         for (unsigned int j = 0; j < matrix->columns; j++) {
-            matrix->coeff[i][j] = (double)(pow(-1.0, rand())*(rand()%10));
+            matrix->coeff[i][j] = (TYPE)(pow(-1.0, rand())*(rand()%10));
         }
     }
     return matrix;
@@ -84,12 +84,12 @@ matrix_t * matrix_random(int rows, int columns)
 
 matrix_t * matrix_symetric_random(int rows, int columns)
 {
-    double random;
+    TYPE random;
     matrix_t *matrix = matrix_create(rows, columns);
     srand((unsigned int)time(NULL));
     for (unsigned int i = 0; i < matrix->rows; i++) {
         for (unsigned int j = 0; j <= i; j++) {
-            random = (double)(pow(-1.0, rand())*(rand()%10));
+            random = (TYPE)(pow(-1.0, rand())*(rand()%10));
             matrix->coeff[i][j] = matrix->coeff[j][i] = random;
         }
     }
@@ -124,11 +124,11 @@ matrix_t * str2matrix(int argc, char **argv, char separator)
                     if(!flag)trigger=j;
                     flag = 1;
                 } else {
-                    if(flag)matrix->coeff[i][len++]=str2double(argv[i]+trigger,j-trigger);
+                    if(flag)matrix->coeff[i][len++]=str2TYPE(argv[i]+trigger,j-trigger);
                     flag = 0;
                 }
             }
-        if(trigger <= size && flag && len < columns)matrix->coeff[i][len]=str2double(argv[i]+trigger,size-trigger);
+        if(trigger <= size && flag && len < columns)matrix->coeff[i][len]=str2TYPE(argv[i]+trigger,size-trigger);
     }
     return matrix;
 }

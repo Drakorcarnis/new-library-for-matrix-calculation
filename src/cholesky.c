@@ -1,30 +1,33 @@
 #include <complex.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "matrix.h"
 #include "tools.h"
 #include "check.h"
 
-static double complex * matrix_cholesky_f(const matrix_t *matrix);
+static TYPE complex * matrix_cholesky_f(const matrix_t *matrix);
 
 
-static double complex * matrix_cholesky_f(const matrix_t *matrix)
+static TYPE complex * matrix_cholesky_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     if(!square_check(matrix, __func__))return NULL;
     if(!symetry_check(matrix, __func__))return NULL;
     int n = matrix->rows;
-    double complex sum;
-    double complex *L = calloc(n*n,sizeof(double complex)); 
+    TYPE complex sum;
+    size_t size = n*n*sizeof(TYPE complex);
+    TYPE complex *L = aligned_alloc(32, size);
     if(!L){
         perror(__func__);
         return NULL;
     }
+    memset(L, 0, size);
     for (int i = 0; i < n; i++){
         sum = 0;
         int index = n*i;
         for (int k = 0; k < i; k++)sum += L[index+k] * L[index+k];
-        L[n*i+i] = csqrt(matrix->coeff[i][i] - sum);
+        L[index+i] = csqrt(matrix->coeff[i][i] - sum);
         for (int j = i+1; j < n; j++){
             sum = 0;
             int index2 = n*j;
@@ -35,15 +38,15 @@ static double complex * matrix_cholesky_f(const matrix_t *matrix)
     return(L);  
 } 
 
-double complex ** matrix_solve_diag_inf_comp(double complex *A[], double complex *B[], int n, int m)
+TYPE complex ** matrix_solve_diag_inf_comp(TYPE complex *A[], TYPE complex *B[], int n, int m)
 {
-    double complex **X = calloc(n,sizeof(double complex *));
+    TYPE complex **X = calloc(n,sizeof(TYPE complex *));
     if(!X){
         perror(__func__);
         return NULL;
     }
     for (int i = 0; i < n; i++){
-        X[i] = calloc(m,sizeof(double complex));
+        X[i] = calloc(m,sizeof(TYPE complex));
     }
     for (int i = 0; i < m; i++){
         for (int j = 0; j < n; j++){
@@ -55,15 +58,15 @@ double complex ** matrix_solve_diag_inf_comp(double complex *A[], double complex
     return(X);
 }
 
-double complex ** matrix_solve_diag_sup_comp(double complex *A[], double complex *B[], int n, int m)
+TYPE complex ** matrix_solve_diag_sup_comp(TYPE complex *A[], TYPE complex *B[], int n, int m)
 {
-    double complex **X = calloc(n,sizeof(double complex *));
+    TYPE complex **X = calloc(n,sizeof(TYPE complex *));
     if(!X){
         perror(__func__);
         return NULL;
     }
     for (int i = 0; i < n; i++){
-        X[i] = calloc(m,sizeof(double complex));
+        X[i] = calloc(m,sizeof(TYPE complex));
     }
     for (int i = 0; i < m; i++){
         for (int j = n - 1; j >= 0; j--){
@@ -81,34 +84,34 @@ matrix_t * matrix_solve_cholesky_f(const matrix_t *A, const matrix_t *B)
     if(!square_check(A, __func__))return NULL;
     if(!symetry_check(A, __func__))return NULL;
     int n = A->rows, m = B->columns;
-    double complex **comp_B = calloc(n,sizeof(double complex *));
+    TYPE complex **comp_B = calloc(n,sizeof(TYPE complex *));
     if(!comp_B){
         perror(__func__);
         return NULL;
     }
     for (int i = 0; i < n; i++){
-        comp_B[i] = calloc(m,sizeof(double complex));
+        comp_B[i] = calloc(m,sizeof(TYPE complex));
     }
     for (int i=0; i < n; i++){
         #pragma omp simd
         for (int j=0; j < m; j++){
-            comp_B[i][j] = (double complex)B->coeff[i][j];
+            comp_B[i][j] = (TYPE complex)B->coeff[i][j];
         }
     }
-    double complex *L = matrix_cholesky_f(A);
-    double complex **stackL = calloc(n,sizeof(double complex *));
+    TYPE complex *L = matrix_cholesky_f(A);
+    TYPE complex **stackL = calloc(n,sizeof(TYPE complex *));
     if(!stackL){
         perror(__func__);
         return NULL;
     }
-    double complex **stackLT = calloc(n,sizeof(double complex *));
+    TYPE complex **stackLT = calloc(n,sizeof(TYPE complex *));
     if(!stackLT){
         perror(__func__);
         return NULL;
     }
     for (int i = 0; i < n; i++){
-        stackL[i] = calloc(n,sizeof(double complex));
-        stackLT[i] = calloc(n,sizeof(double complex));
+        stackL[i] = calloc(n,sizeof(TYPE complex));
+        stackLT[i] = calloc(n,sizeof(TYPE complex));
     }
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
@@ -117,14 +120,14 @@ matrix_t * matrix_solve_cholesky_f(const matrix_t *A, const matrix_t *B)
         }
     }
     free(L);
-    double complex **Z = matrix_solve_diag_inf_comp(stackL, comp_B, n, m);
+    TYPE complex **Z = matrix_solve_diag_inf_comp(stackL, comp_B, n, m);
     for (int i = 0; i < n; i++){
         free(comp_B[i]);
         free(stackL[i]);
     }
     free(comp_B);
     free(stackL);
-    double complex **X = matrix_solve_diag_sup_comp(stackLT, Z, n, m);
+    TYPE complex **X = matrix_solve_diag_sup_comp(stackLT, Z, n, m);
     for (int i = 0; i < n; i++){
         free(Z[i]);
         free(stackLT[i]);
@@ -156,14 +159,15 @@ matrix_t * matrix_inverse_cholesky_f(const matrix_t *matrix)
     return(matrix_inverse);
 }
 
-double matrix_det_cholesky_f(const matrix_t *matrix)
+TYPE matrix_det_cholesky_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return 0;
     if(!square_check(matrix, __func__))return 0; 
-    double complex *L = matrix_cholesky_f(matrix);
+    TYPE complex *L = matrix_cholesky_f(matrix);
     complex det = 1;
     int n = matrix->rows;
-    for (int i=0; i < n; i++)det *= L[i*n+i];
+    for (int i=0; i < n; i++)
+        det *= L[i*n+i];
     free(L);
     return det * det;
 }

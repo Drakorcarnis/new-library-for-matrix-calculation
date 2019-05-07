@@ -19,7 +19,7 @@ int test_matrix_add_f(const matrix_t *matrix1, const matrix_t *matrix2)
     return(1);
 }
 
-int test_matrix_mult_scalar_f(const matrix_t *matrix, double lambda)
+int test_matrix_mult_scalar_f(const matrix_t *matrix, TYPE lambda)
 {
     long long time = mstime();
     matrix_t *mult_matrix = matrix_mult_scalar_f(matrix, lambda);
@@ -107,7 +107,7 @@ int test_matrix_solve_cholesky_f(matrix_t *matrix1, matrix_t *matrix2)
 int test_matrix_det_raw_f(matrix_t *matrix)
 {
     long long time = mstime();
-    double det = matrix_det_raw_f(matrix);
+    TYPE det = matrix_det_raw_f(matrix);
     long long time2 = mstime();
     char *formatted_time = format_time(time2 - time, "ms");
     printf("\n(%s)raw |M| = %g\n", formatted_time, det);
@@ -116,7 +116,7 @@ int test_matrix_det_raw_f(matrix_t *matrix)
 int test_matrix_det_plu_f(matrix_t *matrix)
 {
     long long time = mstime();
-    double det = matrix_det_plu_f(matrix);
+    TYPE det = matrix_det_plu_f(matrix);
     long long time2 = mstime();
     char *formatted_time = format_time(time2 - time, "ms");
     printf("\n(%s)plu |M| = %g\n", formatted_time, det);
@@ -126,7 +126,7 @@ int test_matrix_det_plu_f(matrix_t *matrix)
 int test_matrix_det_cholesky_f(matrix_t *matrix)
 {
     long long time = mstime();
-    double det = matrix_det_cholesky_f(matrix);
+    TYPE det = matrix_det_cholesky_f(matrix);
     long long time2 = mstime();
     char *formatted_time = format_time(time2 - time, "ms");
     printf("\n(%s)cho |M| = %g\n", formatted_time, det);
@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
     // test_matrix_det_raw_f(matrix2);
     
     // test_matrix_solve_plu_f(matrix1, matrix3);
-    // test_function_f(&matrix_inverse_plu_f,matrix1,"plu 1/M");
+    test_function_f(&matrix_inverse_plu_f,matrix1,"plu 1/M");
     // test_matrix_solve_cholesky_f(matrix2, matrix3);
     // test_function_f(&matrix_inverse_plu_f,matrix2,"plu 1/M2");
     // test_function_f(&matrix_inverse_cholesky_f,matrix2,"cho 1/M2");

@@ -6,7 +6,7 @@ PROF_DIR = ../prof
 #
 # Common compiler flags
 #
-CC     = gcc -pipe
+CC     = gcc-9 -pipe -fverbose-asm -g
 CFLAGS = -Wall -Werror -Wextra -std=c18
 LDFLAGS = -lm -lgomp
 SOFLAGS = -shared -fPIC -fopenmp -march=native
@@ -45,7 +45,7 @@ LIB  = matrix
 #
 LIBDBGEXE = $(LIBDBGDIR)/lib$(LIB).so
 LIBDBGOBJS = $(addprefix $(OBJLIBDBGDIR)/, $(LIB_OBJS))
-DBGCFLAGS = -g -Og -DDEBUG --coverage
+DBGCFLAGS = -Og -DDEBUG --coverage
 DBGLDFLAGS = -L$(LIBDBGDIR) -l$(LIB)
 $(OBJLIBDBGDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES)

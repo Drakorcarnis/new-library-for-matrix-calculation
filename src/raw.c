@@ -22,10 +22,10 @@ static matrix_t * matrix_shrink_f(const matrix_t *matrix, unsigned int skipped_r
     return shrink_matrix;
 }
  
-double matrix_det_raw_f(const matrix_t *matrix)
+TYPE matrix_det_raw_f(const matrix_t *matrix)
 {
-    double det = 0;
-    double sign = 0;
+    TYPE det = 0;
+    TYPE sign = 0;
     matrix_t *shrinked_matrix = NULL;
     if(!sanity_check((void *)matrix, __func__))return 0;
     if(matrix->columns != matrix->rows) return 0;
@@ -33,7 +33,7 @@ double matrix_det_raw_f(const matrix_t *matrix)
     for (unsigned int i = 0; i < matrix->columns; i++) 
     {
         shrinked_matrix=matrix_shrink_f(matrix, 0, i);
-        sign = (int)pow(-1.0,(double)i);
+        sign = (int)pow(-1.0,(TYPE)i);
         det += sign * matrix->coeff[0][i] * matrix_det_raw_f(shrinked_matrix);
         matrix_free(shrinked_matrix);
     }
@@ -43,8 +43,8 @@ double matrix_det_raw_f(const matrix_t *matrix)
 matrix_t * matrix_inverse_raw_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
-    double det = matrix_det_raw_f(matrix);
-    double one = 1;
+    TYPE det = matrix_det_raw_f(matrix);
+    TYPE one = 1;
     if(!det){
         fprintf(stderr, "%s: not inversible matrix (|M| = 0)\n", __func__);
         return NULL;
@@ -71,13 +71,13 @@ matrix_t * matrix_com_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     if(!square_check(matrix, __func__))return NULL; 
-    double sign = 0;
+    TYPE sign = 0;
     matrix_t *shrinked_matrix = NULL;
     matrix_t *co_matrix = matrix_create(matrix->rows, matrix->columns);
     for (unsigned int i = 0; i < co_matrix->rows; i++){
         for (unsigned int j = 0; j < co_matrix->columns; j++){
             shrinked_matrix=matrix_shrink_f(matrix, i, j);
-            sign = (int)pow(-1.0,(double)(i+j));
+            sign = (int)pow(-1.0,(TYPE)(i+j));
             co_matrix->coeff[i][j] = sign * matrix_det_raw_f(shrinked_matrix);
             matrix_free(shrinked_matrix);
         }

@@ -20,10 +20,10 @@ matrix_t * matrix_create(unsigned int rows, unsigned int columns)
         goto failed_matrix;
     matrix->rows = rows;
     matrix->columns = columns;
-    matrix->coeff = malloc(rows*sizeof(double *));
+    matrix->coeff = malloc(rows*sizeof(TYPE *));
     if (!matrix->coeff)
         goto failed_coeff;
-    size_t size = (columns + 4-columns%4)* sizeof(double);
+    size_t size = (columns + 4-columns%4)* sizeof(TYPE);
     for (i=0; i < rows; i++){
         matrix->coeff[i] = aligned_alloc(32, size);
         if (!matrix->coeff[i])
@@ -105,7 +105,7 @@ matrix_t * matrix_add_f(const matrix_t *matrix1, const matrix_t *matrix2)
     return add_matrix;
 }
 
-matrix_t * matrix_mult_scalar_f(const matrix_t *matrix, double lambda)
+matrix_t * matrix_mult_scalar_f(const matrix_t *matrix, TYPE lambda)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     matrix_t *mult_matrix = matrix_create(matrix->rows, matrix->columns);
@@ -117,7 +117,7 @@ matrix_t * matrix_mult_scalar_f(const matrix_t *matrix, double lambda)
     }
     return mult_matrix;
 }
-
+    
 matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
 {
     if(!sanity_check((void *)matrix1, __func__))return NULL; 
@@ -139,7 +139,7 @@ matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
             int je = m < j+step ? m : j+step;
             for (int ii = i; ii < ie; ii++){
                 for (int jj = j; jj < je; jj++){
-                    double sum = 0;
+                    TYPE sum = 0;
                     for (unsigned int k = 0; k < n; k++)
                         sum+=matrix1->coeff[ii][k]*columns->coeff[jj][k];
                     mult->coeff[ii][jj] += sum;

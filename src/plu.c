@@ -39,7 +39,7 @@ static void plu_free(plu_t *plu)
 
 static inline void matrix_row_permute(matrix_t *matrix, int i, int j)
 {
-    double *tmp = matrix->coeff[i];
+    TYPE *tmp = matrix->coeff[i];
     matrix->coeff[i] = matrix->coeff[j];
     matrix->coeff[j] = tmp;
 }
@@ -51,8 +51,8 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
     unsigned int p, n = matrix->rows;
     plu_t *plu = plu_create(n); 
     matrix_t *M = matrix_copy(matrix);
-    double **A = M->coeff, **L = plu->L->coeff, **U = plu->U->coeff;
-    double sum;
+    TYPE **A = M->coeff, **L = plu->L->coeff, **U = plu->U->coeff;
+    TYPE sum;
     int step = 16;
     long long time = mstime();
     for (unsigned int i = 0; i < n; i++){
@@ -107,7 +107,7 @@ static matrix_t * matrix_solve_low_trig(const matrix_t *A, const matrix_t *B)
             int je = n < j+step ? n : j+step;
             for (int ii = i; ii < ie; ii++){
                 for (int jj = j; jj < je; jj++){
-                    double sum = X->coeff[ii][jj];
+                    TYPE sum = X->coeff[ii][jj];
                     for (int k = 0; k < jj; k++)
                         sum -= X->coeff[ii][k] * A->coeff[jj][k];
                     X->coeff[ii][jj] = sum / A->coeff[jj][jj];
@@ -132,7 +132,7 @@ static matrix_t * matrix_solve_up_trig(const matrix_t *A, const matrix_t *B)
             int je = 0 >= j-step ? 0 : j-step;
             for (int ii = i; ii < ie; ii++){
                 for (int jj = j-1; jj >= je; jj--){
-                    double sum = X->coeff[ii][jj];
+                    TYPE sum = X->coeff[ii][jj];
                     for (int k = n - 1; k > jj; k--)
                         sum -= X->coeff[ii][k] * A->coeff[jj][k];
                     X->coeff[ii][jj] = sum / A->coeff[jj][jj];
@@ -142,12 +142,12 @@ static matrix_t * matrix_solve_up_trig(const matrix_t *A, const matrix_t *B)
     }
     return(matrix_transp_f(X));
 }
-double matrix_det_plu_f(const matrix_t *matrix)
+TYPE matrix_det_plu_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return 0;
     if(!square_check(matrix, __func__))return 0; 
     plu_t *plu = matrix_plu_f(matrix);
-    double det = pow(-1.0, plu->nb_perm);
+    TYPE det = pow(-1.0, plu->nb_perm);
     for (unsigned int i=0; i < plu->L->rows; i++)
         det *= plu->L->coeff[i][i];
     plu_free(plu);
