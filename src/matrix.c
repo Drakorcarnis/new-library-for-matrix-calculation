@@ -1,4 +1,3 @@
-#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,7 +6,7 @@
 #include <immintrin.h>
 #include <omp.h>
 #include "matrix.h"
-#include "matrix_tools.h"
+#include "tools.h"
 #include "check.h"
 
 
@@ -25,8 +24,8 @@ matrix_t * matrix_create(unsigned int rows, unsigned int columns)
     if (!matrix->coeff)
         goto failed_coeff;
     size_t size = (columns + 4-columns%4)* sizeof(double);
-    for (; i < rows; i++){
-        matrix->coeff[i] = _mm_malloc (size, 64);
+    for (i=0; i < rows; i++){
+        matrix->coeff[i] = aligned_alloc(32, size);
         if (!matrix->coeff[i])
             goto failed_coeff_elt;
         memset(matrix->coeff[i], 0, size);
@@ -140,10 +139,10 @@ matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
             int je = m < j+step ? m : j+step;
             for (int ii = i; ii < ie; ii++){
                 for (int jj = j; jj < je; jj++){
-                    double s = 0;
+                    double sum = 0;
                     for (unsigned int k = 0; k < n; k++)
-                        s+=matrix1->coeff[ii][k]*columns->coeff[jj][k];
-                    mult->coeff[ii][jj] += s;
+                        sum+=matrix1->coeff[ii][k]*columns->coeff[jj][k];
+                    mult->coeff[ii][jj] += sum;
                 }
             }
         }

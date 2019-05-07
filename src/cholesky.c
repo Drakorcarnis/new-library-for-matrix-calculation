@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "matrix.h"
-#include "matrix_tools.h"
+#include "tools.h"
 #include "check.h"
 
 static double complex * matrix_cholesky_f(const matrix_t *matrix);
@@ -151,9 +151,6 @@ matrix_t * matrix_inverse_cholesky_f(const matrix_t *matrix)
     if(!square_check(matrix, __func__))return NULL;
     if(!symetry_check(matrix, __func__))return NULL;
     matrix_t *Id = matrix_identity(matrix->rows);
-    // matrix_t *matrix_inverse2 = matrix_inverse_plu_f(matrix);
-
-    // matrix_free(matrix_inverse2);
     matrix_t *matrix_inverse = matrix_solve_cholesky_f(matrix, Id);
     matrix_free(Id);
     return(matrix_inverse);

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "matrix.h"
-#include "matrix_tools.h"
+#include "tools.h"
 #include "check.h"
 // Methods based upon raw determinant calculation. For fun only. Do never use them, cuz you've NO reason to use them. Really.
 static matrix_t * matrix_shrink_f(const matrix_t *matrix, unsigned int skipped_row, unsigned int skipped_column)

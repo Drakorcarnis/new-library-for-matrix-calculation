@@ -7,7 +7,7 @@ PROF_DIR = ../prof
 # Common compiler flags
 #
 CC     = gcc -pipe
-CFLAGS = -Wall -Werror -Wextra
+CFLAGS = -Wall -Werror -Wextra -std=c18
 LDFLAGS = -lm -lgomp
 SOFLAGS = -shared -fPIC -fopenmp -march=native
 
@@ -30,7 +30,7 @@ OBJLIBRELDIR = $(OBJLIBDIR)/release
 # Project files
 #
 INCLUDES = includes
-LIB_SRCS = matrix.c matrix_tools.c plu.c cholesky.c check.c raw.c
+LIB_SRCS = matrix.c tools.c plu.c cholesky.c check.c raw.c
 TEST_SRCS = test.c
 REG_SRCS = regression.c
 LIB_OBJS = $(LIB_SRCS:.c=.o)
@@ -45,7 +45,7 @@ LIB  = matrix
 #
 LIBDBGEXE = $(LIBDBGDIR)/lib$(LIB).so
 LIBDBGOBJS = $(addprefix $(OBJLIBDBGDIR)/, $(LIB_OBJS))
-DBGCFLAGS = -g -O0 -DDEBUG --coverage
+DBGCFLAGS = -g -Og -DDEBUG --coverage
 DBGLDFLAGS = -L$(LIBDBGDIR) -l$(LIB)
 $(OBJLIBDBGDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES)
@@ -56,7 +56,7 @@ $(OBJDBGDIR)/%.o: %.c
 #
 LIBRELEXE = $(LIBRELDIR)/lib$(LIB).so
 LIBRELOBJS = $(addprefix $(OBJLIBRELDIR)/, $(LIB_OBJS))
-RELCFLAGS = -Ofast -DNDEBUG  -fno-trapping-math -fopt-info-vec-optimized
+RELCFLAGS = -Ofast -DNDEBUG -falign-loops=32 -fopt-info-vec-optimized
 RELLDFLAGS = -L$(LIBRELDIR) -l$(LIB)
 $(OBJLIBRELDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES)
@@ -88,47 +88,31 @@ REGRELOBJS = $(addprefix $(OBJRELDIR)/, $(REG_OBJS))
 # Default build
 all: debug release testdebug testrelease regdebug regrelease
 
-#
-# Debug rules
-#
 debug: $(LIBDBGEXE)
 
 $(LIBDBGEXE): $(LIBDBGOBJS)
 	$(CC) $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $(LIBDBGEXE) $^ $(LDFLAGS)
 
-
-#
-# Release rules
-#
 release: $(LIBRELEXE)
 
 $(LIBRELEXE): $(LIBRELOBJS)
 	$(CC) $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $(LIBRELEXE) $^ $(LDFLAGS)
 
-#
-# Debug test rules
-#
 testdebug: debug $(TESTDBGEXE)
 
 $(TESTDBGEXE): $(TESTDBGOBJS)
 	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(TESTDBGEXE) $^ $(DBGLDFLAGS)
 
-#
-# Release test rules
-#
 testrelease: release $(TESTRELEXE)
 
 $(TESTRELEXE): $(TESTRELOBJS)
 	$(CC) $(CFLAGS) $(RELCFLAGS) -o $(TESTRELEXE) $^ $(RELLDFLAGS)
 
-#
-# Regression rules
-#
 regdebug: debug $(REGDBGEXE)
 
 $(REGDBGEXE): $(REGDBGOBJS)
 	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(REGDBGEXE) $^ $(DBGLDFLAGS) $(LDFLAGS)
-    
+  
 regrelease: release $(REGRELEXE)
 
 $(REGRELEXE): $(REGRELOBJS)
@@ -161,7 +145,7 @@ coverage: regdebug
 profile: regrelease
 	mkdir -p $(PROF_DIR)
 	rm -f $(PROF_DIR)/callgrind.out
-	LD_LIBRARY_PATH="$(LIBRELDIR)" valgrind  --tool=callgrind --simulate-cache=yes --callgrind-out-file=$(PROF_DIR)/callgrind.out $(TESTRELEXE) 500
+	LD_LIBRARY_PATH="$(LIBRELDIR)" valgrind  --tool=callgrind --simulate-cache=yes --callgrind-out-file=$(PROF_DIR)/callgrind.out $(TESTRELEXE) 1000
 	kcachegrind $(PROF_DIR)/callgrind.out
 
 clean:

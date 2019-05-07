@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "matrix.h"
-#include "matrix_tools.h"
+#include "tools.h"
 #include "check.h"
 
 typedef struct {
@@ -36,6 +36,7 @@ static void plu_free(plu_t *plu)
     free(plu->perm);
     free(plu);   
 }
+
 static inline void matrix_row_permute(matrix_t *matrix, int i, int j)
 {
     double *tmp = matrix->coeff[i];
@@ -93,6 +94,7 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
 
 static matrix_t * matrix_solve_low_trig(const matrix_t *A, const matrix_t *B)
 {
+    // La ruse du B en ligne et chaque element permet de calculer 1 ligne
     if(!sanity_check((void *)A, __func__))return NULL;
     if(!square_check(A, __func__))return NULL; 
     unsigned int n = A->rows;

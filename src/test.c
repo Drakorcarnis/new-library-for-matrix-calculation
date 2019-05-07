@@ -3,7 +3,7 @@
 #include <time.h>
 #include <string.h>
 #include "matrix.h"
-#include "matrix_tools.h"
+#include "tools.h"
 
 int test_matrix_add_f(const matrix_t *matrix1, const matrix_t *matrix2)
 {
@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
     // test_matrix_add_f(matrix1, matrix2);
     // test_matrix_mult_scalar_f(matrix1, 0.5);
     // test_matrix_pow_f(matrix1, 3);
-    // test_matrix_mult_f(matrix1, matrix1);
+    test_matrix_mult_f(matrix1, matrix1);
     
     // test_function_f(&matrix_det_raw_f,matrix1, "|M|");
     // test_function_f(&matrix_com_f,matrix1, "com(M)");
@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
     // test_matrix_det_raw_f(matrix2);
     
     // test_matrix_solve_plu_f(matrix1, matrix3);
-    test_function_f(&matrix_inverse_plu_f,matrix1,"plu 1/M");
+    // test_function_f(&matrix_inverse_plu_f,matrix1,"plu 1/M");
     // test_matrix_solve_cholesky_f(matrix2, matrix3);
     // test_function_f(&matrix_inverse_plu_f,matrix2,"plu 1/M2");
     // test_function_f(&matrix_inverse_cholesky_f,matrix2,"cho 1/M2");

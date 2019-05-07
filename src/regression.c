@@ -1,11 +1,10 @@
-#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
 #include <math.h>
 #include "matrix.h"
-#include "matrix_tools.h"
+#include "tools.h"
 
 #define DATA_PATH "/home/Drakorcarnis/new_library/src/data"
 #define PRECISION 11
@@ -232,12 +231,12 @@ static int test_error_cases(void)
     return(res);
 }
 
-static matrix_t** chartab2matrixtab(char ** filetab, ssize_t size, char *data_path)
+static matrix_t** chartab2matrixtab(char ** filetab, int size, char *data_path)
 {
     matrix_t** matrixtab = malloc(sizeof(matrix_t*) * size);
     for (int i = 0; i < size; i++)
     {
-        ssize_t bufsz = snprintf(NULL, 0, "%s/%s.txt",data_path,filetab[i]);
+        size_t bufsz = snprintf(NULL, 0, "%s/%s.txt",data_path,filetab[i]);
         char* filename = malloc((bufsz+1)*sizeof(*filename));
         snprintf(filename, bufsz + 1, "%s/%s.txt",data_path,filetab[i]);
         matrixtab[i] = file2matrix(filename);
@@ -246,7 +245,7 @@ static matrix_t** chartab2matrixtab(char ** filetab, ssize_t size, char *data_pa
     return matrixtab;
 }
 
-static void free_matrixtab(matrix_t** matrixtab, ssize_t size)
+static void free_matrixtab(matrix_t** matrixtab, int size)
 {
     for (int i = 0; i < size; i++)matrix_free(matrixtab[i]);
     free(matrixtab);
@@ -258,7 +257,7 @@ int main(int argc, char **argv) {
     char *data_path = DATA_PATH;
     if(argc > 1)
         precision = atoi(argv[1]);
-    ssize_t size;
+    int size;
     
     double(*test_function_in_1matrix_out_double_f[])(const matrix_t*) = {IN_1MATRIX_OUT_DOUBLE};
     char* test_function_in_1matrix_out_double_name[] = {IN_1MATRIX_OUT_DOUBLE_NAME};

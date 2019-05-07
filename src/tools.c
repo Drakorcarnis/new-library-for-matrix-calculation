@@ -7,7 +7,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include "matrix.h"
-#include "matrix_tools.h"
+#include "tools.h"
 
 static int sanity_check(const void *pointer, const char *function_name)
 {
@@ -155,7 +155,7 @@ matrix_t * file2matrix(char *filename)
     int argc = 0, i;
     char *line = NULL;
     size_t len = 0;
-    ssize_t read;
+    int read;
     matrix_t *matrix = NULL;
     char **argv = malloc(sizeof(char*));
     if(!argv){
@@ -207,7 +207,7 @@ char * format_time(const long long input_time, char* format)
     const int width[10] = {0,3,2,2,2,3,3,3,3,3};
     long long timestamp[10];
     int  scale, i, j, k;
-    ssize_t bufsz;
+    size_t bufsz;
     char *ret = NULL;
     for (scale = 1; (scale <= 10) && (strcmp(format, formats[scale-1]) != 0); scale++);
     if(scale > 10)return(NULL); // Unsupported format, you filthy rat !
@@ -249,8 +249,8 @@ int test_matrix_equality(const matrix_t *matrix1, const matrix_t *matrix2, int p
     if((matrix1->rows != matrix2->rows) || (matrix1->columns != matrix2->columns))return 0;
     for (unsigned int i=0; i<matrix1->rows; i++){
         for (unsigned int j=0; j<matrix1->columns; j++){
-            if(fabs(matrix1->coeff[i][j] != matrix1->coeff[i][j]) )return 0;// These checks are necessary 
-            if(fabs(matrix2->coeff[i][j] != matrix2->coeff[i][j]))return 0;//  in case of nan values
+            if(matrix1->coeff[i][j] != matrix1->coeff[i][j])return 0;// These checks are necessary 
+            if(matrix2->coeff[i][j] != matrix2->coeff[i][j])return 0;//  in case of nan values
             if(fabs(matrix1->coeff[i][j] - matrix2->coeff[i][j]) > pow(10, -precision))return 0;
         }
     }
