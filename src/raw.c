@@ -5,15 +5,15 @@
 #include "tools.h"
 #include "check.h"
 // Methods based upon raw determinant calculation. For fun only. Do never use them, cuz you've NO reason to use them. Really.
-static matrix_t * matrix_shrink_f(const matrix_t *matrix, unsigned int skipped_row, unsigned int skipped_column)
+static matrix_t * matrix_shrink_f(const matrix_t *matrix, size_t skipped_row, size_t skipped_column)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
-    unsigned int l = 0;
+    size_t l = 0;
     matrix_t *shrink_matrix = matrix_create(matrix->rows-1, matrix->columns-1);
-    for (unsigned int i = 0; i < shrink_matrix->rows; i++) {
+    for (size_t i = 0; i < shrink_matrix->rows; i++) {
         if (l == skipped_row) l++;
-        unsigned int k=0;
-        for (unsigned int j = 0; j < shrink_matrix->columns; j++) {
+        size_t k=0;
+        for (size_t j = 0; j < shrink_matrix->columns; j++) {
             if (k == skipped_column) k++;
             shrink_matrix->coeff[i][j] = matrix->coeff[l][k++];
         }
@@ -30,7 +30,7 @@ TYPE matrix_det_raw_f(const matrix_t *matrix)
     if(!sanity_check((void *)matrix, __func__))return 0;
     if(matrix->columns != matrix->rows) return 0;
     if(matrix->columns == 1)return matrix->coeff[0][0];
-    for (unsigned int i = 0; i < matrix->columns; i++) 
+    for (size_t i = 0; i < matrix->columns; i++) 
     {
         shrinked_matrix=matrix_shrink_f(matrix, 0, i);
         sign = (int)pow(-1.0,(TYPE)i);
@@ -74,8 +74,8 @@ matrix_t * matrix_com_f(const matrix_t *matrix)
     TYPE sign = 0;
     matrix_t *shrinked_matrix = NULL;
     matrix_t *co_matrix = matrix_create(matrix->rows, matrix->columns);
-    for (unsigned int i = 0; i < co_matrix->rows; i++){
-        for (unsigned int j = 0; j < co_matrix->columns; j++){
+    for (size_t i = 0; i < co_matrix->rows; i++){
+        for (size_t j = 0; j < co_matrix->columns; j++){
             shrinked_matrix=matrix_shrink_f(matrix, i, j);
             sign = (int)pow(-1.0,(TYPE)(i+j));
             co_matrix->coeff[i][j] = sign * matrix_det_raw_f(shrinked_matrix);

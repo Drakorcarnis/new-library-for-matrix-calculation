@@ -18,17 +18,17 @@ static int sanity_check(const void *pointer, const char *function_name)
     return 1;
 }
 
-static TYPE str2TYPE(const char *str, unsigned int len)
+static TYPE str2TYPE(const char *str, size_t len)
 {
     char *num = calloc(len+1, sizeof(char));
     char *den = calloc(len+1, sizeof(char));
     if ((!num) || (!den)){
         perror(__func__);
-        fprintf(stderr, "Wanna alloc %d\n", len+1); 
+        fprintf(stderr, "Wanna alloc %ld\n", len+1); 
         return -1;
     }
     den[0] = '1';
-    for (unsigned int i = 0; i < len; i++) {
+    for (size_t i = 0; i < len; i++) {
         if (str[i] == '/'){
             memcpy(den, str+i+1, len-i-1);
             break;
@@ -46,10 +46,10 @@ static void _matrix_display(const matrix_t *matrix, int precision, FILE *stream)
 {
     TYPE val;
     int len = 0;
-    for (unsigned int i = 0; i < matrix->rows; i++) {
+    for (size_t i = 0; i < matrix->rows; i++) {
         if (!precision)
             fprintf(stream, "[ ");
-        for (unsigned int j = 0; j < matrix->columns; j++){
+        for (size_t j = 0; j < matrix->columns; j++){
             val = matrix->coeff[i][j];
             if (precision){
                 fprintf(stream, "%.*g ", precision, val);
@@ -73,9 +73,9 @@ static void _matrix_display(const matrix_t *matrix, int precision, FILE *stream)
 matrix_t * matrix_random(int rows, int columns)
 {
     matrix_t *matrix = matrix_create(rows, columns);
-    srand((unsigned int)time(NULL));
-    for (unsigned int i = 0; i < matrix->rows; i++) {
-        for (unsigned int j = 0; j < matrix->columns; j++) {
+    srand((size_t)time(NULL));
+    for (size_t i = 0; i < matrix->rows; i++) {
+        for (size_t j = 0; j < matrix->columns; j++) {
             matrix->coeff[i][j] = (TYPE)(pow(-1.0, rand())*(rand()%10));
         }
     }
@@ -86,9 +86,9 @@ matrix_t * matrix_symetric_random(int rows, int columns)
 {
     TYPE random;
     matrix_t *matrix = matrix_create(rows, columns);
-    srand((unsigned int)time(NULL));
-    for (unsigned int i = 0; i < matrix->rows; i++) {
-        for (unsigned int j = 0; j <= i; j++) {
+    srand((size_t)time(NULL));
+    for (size_t i = 0; i < matrix->rows; i++) {
+        for (size_t j = 0; j <= i; j++) {
             random = (TYPE)(pow(-1.0, rand())*(rand()%10));
             matrix->coeff[i][j] = matrix->coeff[j][i] = random;
         }
@@ -98,9 +98,9 @@ matrix_t * matrix_symetric_random(int rows, int columns)
 
 matrix_t * str2matrix(int argc, char **argv, char separator)
 {
-    unsigned int i, j, columns = 0, len, trigger, flag = 0, count, size;
+    size_t i, j, columns = 0, len, trigger, flag = 0, count, size;
     matrix_t *matrix = NULL;
-    for (i = 0; i < (unsigned int)argc; i++) {
+    for (i = 0; i < (size_t)argc; i++) {
         count = 0;
         for (j = 0; argv[i][j]; j++){
             if(argv[i][j] != separator && argv[i][j] != '\t' && argv[i][j] != '\n' && argv[i][j] != '\r'){
@@ -247,8 +247,8 @@ int test_matrix_equality(const matrix_t *matrix1, const matrix_t *matrix2, int p
     if(!sanity_check(matrix1, __func__))return 0; 
     if(!sanity_check(matrix2, __func__))return 0; 
     if((matrix1->rows != matrix2->rows) || (matrix1->columns != matrix2->columns))return 0;
-    for (unsigned int i=0; i<matrix1->rows; i++){
-        for (unsigned int j=0; j<matrix1->columns; j++){
+    for (size_t i=0; i<matrix1->rows; i++){
+        for (size_t j=0; j<matrix1->columns; j++){
             if(matrix1->coeff[i][j] != matrix1->coeff[i][j])return 0;// These checks are necessary 
             if(matrix2->coeff[i][j] != matrix2->coeff[i][j])return 0;//  in case of nan values
             if(fabs(matrix1->coeff[i][j] - matrix2->coeff[i][j]) > pow(10, -precision))return 0;

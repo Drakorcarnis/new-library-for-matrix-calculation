@@ -6,17 +6,17 @@
 #include "check.h"
 
 typedef struct {
-    unsigned int nb_perm;
-    unsigned int (*perm)[2];
+    size_t nb_perm;
+    size_t (*perm)[2];
     matrix_t *L;
     matrix_t *U;
 } plu_t;
 
-static plu_t * plu_create(unsigned int rank);
+static plu_t * plu_create(size_t rank);
 static void plu_free(plu_t *plu);
 static plu_t * matrix_plu_f(const matrix_t *matrix);
 
-static plu_t * plu_create(unsigned int rank){
+static plu_t * plu_create(size_t rank){
     plu_t *plu = malloc(sizeof(plu_t));
     if(!plu){
         perror(__func__);
@@ -48,19 +48,19 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     if(!square_check(matrix, __func__))return NULL;
-    unsigned int p, n = matrix->rows;
+    size_t p, n = matrix->rows;
     plu_t *plu = plu_create(n); 
     matrix_t *M = matrix_copy(matrix);
     TYPE **A = M->coeff, **L = plu->L->coeff, **U = plu->U->coeff;
     TYPE sum;
     int step = 16;
     long long time = mstime();
-    for (unsigned int i = 0; i < n; i++){
-        for (unsigned int j = i; j < n; j+=step){
+    for (size_t i = 0; i < n; i++){
+        for (size_t j = i; j < n; j+=step){
             int je = n < j+step ? n : j+step;
             for (int jj = j; jj < je; jj++){
                 sum = 0;
-                for (unsigned int k = 0; k < i; k++)
+                for (size_t k = 0; k < i; k++)
                     sum += L[jj][k] * U[i][k];
                 L[jj][i] = A[jj][i] - sum;
             }
@@ -74,11 +74,11 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
             plu->perm[plu->nb_perm-1][0] = p;
             plu->perm[plu->nb_perm-1][1] = i;
         }
-        for (unsigned int j = i+1; j < n; j+=step){
+        for (size_t j = i+1; j < n; j+=step){
             int je = n < j+step ? n : j+step;
             for (int jj = j; jj < je; jj++){
                 sum = 0;
-                for (unsigned int k = 0; k < i; k++)
+                for (size_t k = 0; k < i; k++)
                     sum += L[i][k] * U[jj][k];
                 U[jj][i] = (A[i][jj] - sum) / L[i][i];
             }
@@ -97,13 +97,13 @@ static matrix_t * matrix_solve_low_trig(const matrix_t *A, const matrix_t *B)
     // La ruse du B en ligne et chaque element permet de calculer 1 ligne
     if(!sanity_check((void *)A, __func__))return NULL;
     if(!square_check(A, __func__))return NULL; 
-    unsigned int n = A->rows;
-    unsigned int m = B->columns;
+    size_t n = A->rows;
+    size_t m = B->columns;
     int step = 16;
     matrix_t *X = matrix_transp_f(B);
-    for (unsigned int i = 0; i < m; i+=step){
+    for (size_t i = 0; i < m; i+=step){
         int ie = m < i+step ? m : i+step;
-        for (unsigned int j = 0; j < n; j+=step){
+        for (size_t j = 0; j < n; j+=step){
             int je = n < j+step ? n : j+step;
             for (int ii = i; ii < ie; ii++){
                 for (int jj = j; jj < je; jj++){
@@ -148,7 +148,7 @@ TYPE matrix_det_plu_f(const matrix_t *matrix)
     if(!square_check(matrix, __func__))return 0; 
     plu_t *plu = matrix_plu_f(matrix);
     TYPE det = pow(-1.0, plu->nb_perm);
-    for (unsigned int i=0; i < plu->L->rows; i++)
+    for (size_t i=0; i < plu->L->rows; i++)
         det *= plu->L->coeff[i][i];
     plu_free(plu);
     return det;
@@ -161,7 +161,7 @@ matrix_t * matrix_solve_plu_f(const matrix_t *A, const matrix_t *B)
     plu_t *plu = matrix_plu_f(A);
     long long time = mstime();
     matrix_t *permB = matrix_copy(B);
-    for (unsigned int i = 0; i < plu->nb_perm; i++)
+    for (size_t i = 0; i < plu->nb_perm; i++)
         matrix_row_permute(permB, plu->perm[i][0], plu->perm[i][1]);
     printf("perm: %s\n", format_time(mstime()-time, "ms"));
     time = mstime();

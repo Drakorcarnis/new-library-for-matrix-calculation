@@ -7,8 +7,8 @@
 #include "tools.h"
 
 #define DATA_PATH "/home/Drakorcarnis/new_library/src/data"
+// Those test must be run with TYPE defined to double in matrix.h
 #define PRECISION 11
-// #define PRECISION 3
 int precision = PRECISION;
 
 #define IN_1MATRIX_OUT_DOUBLE       matrix_det_plu_f,   matrix_det_cholesky_f,    matrix_det_raw_f
@@ -157,7 +157,7 @@ static int test_function_in_matrix_int_out_matrix_f(matrix_t*(*function)(const m
     return(res.result);
 }
 
-static int test_function_in_matrix_2int_out_matrix_f(matrix_t*(*function)(const matrix_t*, unsigned int, unsigned int), matrix_t* matrix, int val0, int val1, matrix_t* expected, char *test_name)
+static int test_function_in_matrix_2int_out_matrix_f(matrix_t*(*function)(const matrix_t*, size_t, size_t), matrix_t* matrix, int val0, int val1, matrix_t* expected, char *test_name)
 {
     long long time = mstime();
     matrix_t *ret = (function)(matrix, val0, val1);
@@ -332,7 +332,7 @@ int main(int argc, char **argv) {
     free_matrixtab(test_function_in_1matrix_1int_out_matrix_in0_input, size);  
     free_matrixtab(test_function_in_1matrix_1int_out_matrix_out_output, size);  
     
-    matrix_t*(*test_function_in_1matrix_2int_out_matrix_f[])(const matrix_t*, unsigned int, unsigned int) = {IN_1MATRIX_2INT_OUT_MATRIX};
+    matrix_t*(*test_function_in_1matrix_2int_out_matrix_f[])(const matrix_t*, size_t, size_t) = {IN_1MATRIX_2INT_OUT_MATRIX};
     char* test_function_in_1matrix_2int_out_matrix_name[] = {IN_1MATRIX_2INT_OUT_MATRIX_NAME};
     char* test_function_in_1matrix_2int_out_matrix_in0[] = {IN_1MATRIX_2INT_OUT_MATRIX_IN0};
     size = sizeof(test_function_in_1matrix_2int_out_matrix_in0)/sizeof(char*);

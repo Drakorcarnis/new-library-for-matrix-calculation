@@ -22,8 +22,8 @@ int square_check(const matrix_t *matrix, const char *function_name)
 
 int symetry_check(const matrix_t *matrix, const char *function_name)
 {
-    for (unsigned int i = 0; i < matrix->rows; i++) {
-        for (unsigned int j = 0; j < i; j++) {
+    for (size_t i = 0; i < matrix->rows; i++) {
+        for (size_t j = 0; j < i; j++) {
             if(matrix->coeff[i][j] != matrix->coeff[j][i]){
                 fprintf(stderr, "%s: not symetric matrix\n",function_name);
                 return 0;
