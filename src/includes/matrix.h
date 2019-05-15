@@ -1,6 +1,7 @@
 #ifndef MATRIX
 #define MATRIX
-#define TYPE float
+#define TYPE double
+
 typedef struct {
     size_t rows;
     size_t columns;

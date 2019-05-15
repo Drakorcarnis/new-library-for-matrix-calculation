@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "matrix.h"
 #include "tools.h"
 #include "check.h"
@@ -53,7 +54,7 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
     matrix_t *M = matrix_copy(matrix);
     TYPE **A = M->coeff, **L = plu->L->coeff, **U = plu->U->coeff;
     TYPE sum;
-    int step = 16;
+    size_t step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
     long long time = mstime();
     for (size_t i = 0; i < n; i++){
         for (size_t j = i; j < n; j+=step){
@@ -99,7 +100,7 @@ static matrix_t * matrix_solve_low_trig(const matrix_t *A, const matrix_t *B)
     if(!square_check(A, __func__))return NULL; 
     size_t n = A->rows;
     size_t m = B->columns;
-    int step = 16;
+    size_t step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
     matrix_t *X = matrix_transp_f(B);
     for (size_t i = 0; i < m; i+=step){
         int ie = m < i+step ? m : i+step;
@@ -122,14 +123,15 @@ static matrix_t * matrix_solve_up_trig(const matrix_t *A, const matrix_t *B)
 {
     if(!sanity_check((void *)A, __func__))return NULL;
     if(!square_check(A, __func__))return NULL; 
-    int n = A->rows;
-    int m = B->columns;
-    int step = 16;
+    size_t n = A->rows;
+    size_t m = B->columns;
+    size_t step = 16;
+    // size_t step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
     matrix_t *X = matrix_transp_f(B);
-    for (int i = 0; i < m; i+=step){
+    for (size_t i = 0; i < m; i+=step){
         int ie = m < i+step ? m : i+step;
         for (int j = n - 1; j >= 0; j-=step){
-            int je = 0 >= j-step ? 0 : j-step;
+            int je = 0 >= j-(int)step ? 0 : j-step;
             for (int ii = i; ii < ie; ii++){
                 for (int jj = j-1; jj >= je; jj--){
                     TYPE sum = X->coeff[ii][jj];

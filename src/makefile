@@ -6,10 +6,10 @@ PROF_DIR = ../prof
 #
 # Common compiler flags
 #
-CC     = gcc-9 -pipe -fverbose-asm -g
+CC     = gcc-9 -pipe -fverbose-asm -g -ffast-math
 CFLAGS = -Wall -Werror -Wextra -std=c18
 LDFLAGS = -lm -lgomp
-SOFLAGS = -shared -fPIC -fopenmp -march=native
+SOFLAGS = -shared -fPIC -fopenmp -march=native -ffast-math
 
 BINDIR = ../bin
 BINDBGDIR = $(BINDIR)/debug
@@ -45,7 +45,7 @@ LIB  = matrix
 #
 LIBDBGEXE = $(LIBDBGDIR)/lib$(LIB).so
 LIBDBGOBJS = $(addprefix $(OBJLIBDBGDIR)/, $(LIB_OBJS))
-DBGCFLAGS = -Og -DDEBUG --coverage
+DBGCFLAGS = -Og --coverage
 DBGLDFLAGS = -L$(LIBDBGDIR) -l$(LIB)
 $(OBJLIBDBGDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES)
@@ -56,7 +56,7 @@ $(OBJDBGDIR)/%.o: %.c
 #
 LIBRELEXE = $(LIBRELDIR)/lib$(LIB).so
 LIBRELOBJS = $(addprefix $(OBJLIBRELDIR)/, $(LIB_OBJS))
-RELCFLAGS = -Ofast -DNDEBUG -falign-loops=32 -fopt-info-vec-optimized
+RELCFLAGS = -Ofast -fopt-info-vec-optimized
 RELLDFLAGS = -L$(LIBRELDIR) -l$(LIB)
 $(OBJLIBRELDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES)

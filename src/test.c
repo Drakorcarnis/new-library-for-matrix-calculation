@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
     // test_matrix_det_raw_f(matrix2);
     
     // test_matrix_solve_plu_f(matrix1, matrix3);
-    test_function_f(&matrix_inverse_plu_f,matrix1,"plu 1/M");
+    // test_function_f(&matrix_inverse_plu_f,matrix1,"plu 1/M");
     // test_matrix_solve_cholesky_f(matrix2, matrix3);
     // test_function_f(&matrix_inverse_plu_f,matrix2,"plu 1/M2");
     // test_function_f(&matrix_inverse_cholesky_f,matrix2,"cho 1/M2");
