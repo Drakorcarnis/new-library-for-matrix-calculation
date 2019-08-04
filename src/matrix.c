@@ -44,18 +44,22 @@ failed_matrix:
 matrix_t * matrix_identity(size_t n)
 {
     matrix_t * matrix = matrix_create(n, n);
-    for (size_t i = 0; i < n; i++)
-        matrix->coeff[i][i] = 1;
+    if(matrix){
+        for (size_t i = 0; i < n; i++)
+            matrix->coeff[i][i] = 1;
+    }
     return matrix;
 }
 
 matrix_t * matrix_copy(const matrix_t *matrix)
 {
     matrix_t *copy = matrix_create(matrix->rows, matrix->columns);
-    for (size_t i = 0; i < matrix->rows; i++) {
-        #pragma omp simd
-        for (size_t j = 0; j < matrix->columns; j++) {
-            copy->coeff[i][j] = matrix->coeff[i][j];
+    if(copy){
+        for (size_t i = 0; i < matrix->rows; i++) {
+            #pragma omp simd
+            for (size_t j = 0; j < matrix->columns; j++) {
+                copy->coeff[i][j] = matrix->coeff[i][j];
+            }
         }
     }
     return copy;
@@ -79,10 +83,12 @@ matrix_t * matrix_transp_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL; 
     matrix_t *transpose_matrix = matrix_create(matrix->columns, matrix->rows);
-    #pragma omp parallel for
-    for (size_t i = 0; i < transpose_matrix->rows; i++)
-        for (size_t j = 0; j < transpose_matrix->columns; j++)
-            transpose_matrix->coeff[i][j]=matrix->coeff[j][i];
+    if(transpose_matrix){
+        #pragma omp parallel for
+        for (size_t i = 0; i < transpose_matrix->rows; i++)
+            for (size_t j = 0; j < transpose_matrix->columns; j++)
+                transpose_matrix->coeff[i][j]=matrix->coeff[j][i];
+    }
     return transpose_matrix;
 }
 
@@ -95,10 +101,12 @@ matrix_t * matrix_add_f(const matrix_t *matrix1, const matrix_t *matrix2)
         return NULL;
     }
     matrix_t *add_matrix = matrix_create(matrix1->rows, matrix1->columns);
-    for (size_t i = 0; i < add_matrix->rows; i++) {
-        #pragma omp simd
-        for (size_t j = 0; j < add_matrix->columns; j++) {
-            add_matrix->coeff[i][j] = matrix1->coeff[i][j] + matrix2->coeff[i][j];
+    if(add_matrix){
+        for (size_t i = 0; i < add_matrix->rows; i++) {
+            #pragma omp simd
+            for (size_t j = 0; j < add_matrix->columns; j++) {
+                add_matrix->coeff[i][j] = matrix1->coeff[i][j] + matrix2->coeff[i][j];
+            }
         }
     }
     return add_matrix;
@@ -108,10 +116,12 @@ matrix_t * matrix_mult_scalar_f(const matrix_t *matrix, TYPE lambda)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     matrix_t *mult_matrix = matrix_create(matrix->rows, matrix->columns);
-    for (size_t i = 0; i < matrix->rows; i++) {
-        #pragma omp simd
-        for (size_t j = 0; j < matrix->columns; j++) {
-            mult_matrix->coeff[i][j]=lambda * matrix->coeff[i][j];
+    if(mult_matrix){
+        for (size_t i = 0; i < matrix->rows; i++) {
+            #pragma omp simd
+            for (size_t j = 0; j < matrix->columns; j++) {
+                mult_matrix->coeff[i][j]=lambda * matrix->coeff[i][j];
+            }
         }
     }
     return mult_matrix;
@@ -148,7 +158,7 @@ matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
         }
     }
     matrix_free(columns);
-	return mult;
+    return mult;
 }
 // matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
 // {
@@ -157,7 +167,8 @@ matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
 // double *restrict rres;
 // double *restrict rmul1;
 // double *restrict rmul2;
-// int SM = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);;
+    // size_t default_step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
+    // size_t step = default_step > 0 ? default_step:16;
 // for (i = 0; i < N; i += SM)
     // for (j = 0; j < N; j += SM)
         // for (k = 0; k < N; k += SM)
@@ -185,10 +196,14 @@ matrix_t * matrix_pow_f(const matrix_t *matrix, int pow)
     if(!square_check(matrix, __func__))return NULL;
     matrix_t *tmp_matrix0 = matrix_copy(matrix);
     matrix_t *tmp_matrix1;
-    for (int i = 0; i < pow-1; i++) {
-        tmp_matrix1 = matrix_mult_f(tmp_matrix0, matrix);
-        matrix_free(tmp_matrix0);
-        tmp_matrix0 = tmp_matrix1;
+    if(tmp_matrix0){
+        for (int i = 0; i < pow-1; i++) {
+            tmp_matrix1 = matrix_mult_f(tmp_matrix0, matrix);
+            if(tmp_matrix1){
+                matrix_free(tmp_matrix0);
+                tmp_matrix0 = tmp_matrix1;
+            }
+        }
     }
     return tmp_matrix0;
 }

@@ -135,10 +135,12 @@ matrix_t * matrix_solve_cholesky_f(const matrix_t *A, const matrix_t *B)
     free(Z);
     free(stackLT);
     matrix_t *ret = matrix_create(n,m);
-    for (int i=0; i < n; i++){
-        #pragma omp simd
-        for (int j=0; j < m; j++){
-            ret->coeff[i][j] = creal(X[i][j]);
+    if(ret){
+        for (int i=0; i < n; i++){
+            #pragma omp simd
+            for (int j=0; j < m; j++){
+                ret->coeff[i][j] = creal(X[i][j]);
+            }
         }
     }
     for (int i = 0; i < n; i++){

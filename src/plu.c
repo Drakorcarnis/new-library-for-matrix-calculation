@@ -51,7 +51,9 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
     if(!square_check(matrix, __func__))return NULL;
     size_t p, n = matrix->rows;
     plu_t *plu = plu_create(n); 
+    if(!sanity_check((void *)plu, __func__))return NULL;
     matrix_t *M = matrix_copy(matrix);
+    if(!sanity_check((void *)M, __func__))return NULL;
     TYPE **A = M->coeff, **L = plu->L->coeff, **U = plu->U->coeff;
     TYPE sum;
     size_t default_step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
