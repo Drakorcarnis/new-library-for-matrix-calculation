@@ -4,7 +4,6 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <emmintrin.h>
 #include <omp.h>
 #include "matrix.h"
 #include "tools.h"
@@ -131,7 +130,8 @@ matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
     if(!sanity_check((void *)mult, __func__))return NULL; 
     matrix_t *columns = matrix_transp_f(matrix2);
     if(!sanity_check((void *)columns, __func__))return NULL; 
-    size_t step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
+    size_t default_step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
+    size_t step = default_step > 0 ? default_step:16;
     #pragma omp parallel for
     for (size_t i = 0; i < n; i+=step) {
         int ie = n < i+step ? n : i+step;

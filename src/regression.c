@@ -6,7 +6,7 @@
 #include "matrix.h"
 #include "tools.h"
 
-#define DATA_PATH "/home/Drakorcarnis/new_library/src/data"
+#define DATA_PATH "/home/pi/new_library/src/data"
 // Those test must be run with TYPE defined to double in matrix.h
 #define PRECISION 11
 int precision = PRECISION;
@@ -259,15 +259,16 @@ int main(int argc, char **argv) {
     if(argc > 1)
         precision = atoi(argv[1]);
     int size;
-    
     TYPE(*test_function_in_1matrix_out_TYPE_f[])(const matrix_t*) = {IN_1MATRIX_OUT_DOUBLE};
     char* test_function_in_1matrix_out_TYPE_name[] = {IN_1MATRIX_OUT_DOUBLE_NAME};
     char* test_function_in_1matrix_out_TYPE_in[] = {IN_1MATRIX_OUT_DOUBLE_IN};
     size = sizeof(test_function_in_1matrix_out_TYPE_in)/sizeof(char*);
     matrix_t** test_function_in_1matrix_out_TYPE_in_input = chartab2matrixtab(test_function_in_1matrix_out_TYPE_in, size, data_path);
     TYPE test_function_in_1matrix_out_TYPE_out[] = {IN_1MATRIX_OUT_DOUBLE_OUT}; 
-    for (int i = 0; i < size; i++)
+    for (int i = 0; i < size; i++){
         if(!test_function_in_matrix_out_TYPE_f(test_function_in_1matrix_out_TYPE_f[i],test_function_in_1matrix_out_TYPE_in_input[i], test_function_in_1matrix_out_TYPE_out[i], test_function_in_1matrix_out_TYPE_name[i]))ret=1;  
+        
+    }
     free_matrixtab(test_function_in_1matrix_out_TYPE_in_input, size);
     
     matrix_t*(*test_function_in_1matrix_out_matrix_f[])(const matrix_t*) = {IN_1MATRIX_OUT_MATRIX};

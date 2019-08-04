@@ -6,7 +6,7 @@ PROF_DIR = ../prof
 #
 # Common compiler flags
 #
-CC     = gcc-9 -pipe -fverbose-asm -g -ffast-math
+CC     = gcc -pipe -fverbose-asm -g -ffast-math
 CFLAGS = -Wall -Werror -Wextra -std=c18
 LDFLAGS = -lm -lgomp
 SOFLAGS = -shared -fPIC -fopenmp -march=native -ffast-math

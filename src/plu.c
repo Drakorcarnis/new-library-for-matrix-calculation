@@ -54,7 +54,8 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
     matrix_t *M = matrix_copy(matrix);
     TYPE **A = M->coeff, **L = plu->L->coeff, **U = plu->U->coeff;
     TYPE sum;
-    size_t step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
+    size_t default_step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
+    size_t step = default_step > 0 ? default_step:16;
     long long time = mstime();
     for (size_t i = 0; i < n; i++){
         for (size_t j = i; j < n; j+=step){
@@ -100,7 +101,8 @@ static matrix_t * matrix_solve_low_trig(const matrix_t *A, const matrix_t *B)
     if(!square_check(A, __func__))return NULL; 
     size_t n = A->rows;
     size_t m = B->columns;
-    size_t step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
+    size_t default_step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
+    size_t step = default_step > 0 ? default_step:16;
     matrix_t *X = matrix_transp_f(B);
     for (size_t i = 0; i < m; i+=step){
         int ie = m < i+step ? m : i+step;
@@ -125,8 +127,8 @@ static matrix_t * matrix_solve_up_trig(const matrix_t *A, const matrix_t *B)
     if(!square_check(A, __func__))return NULL; 
     size_t n = A->rows;
     size_t m = B->columns;
-    size_t step = 16;
-    // size_t step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
+    size_t default_step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
+    size_t step = default_step > 0 ? default_step:16;
     matrix_t *X = matrix_transp_f(B);
     for (size_t i = 0; i < m; i+=step){
         int ie = m < i+step ? m : i+step;
