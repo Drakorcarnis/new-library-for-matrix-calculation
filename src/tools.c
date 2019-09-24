@@ -24,7 +24,7 @@ static TYPE str2TYPE(const char *str, size_t len)
     char *den = calloc(len+1, sizeof(char));
     if ((!num) || (!den)){
         perror(__func__);
-        fprintf(stderr, "Wanna alloc %d\n", len+1); 
+        fprintf(stderr, "Wanna alloc %ld\n", len+1); 
         return -1;
     }
     den[0] = '1';
