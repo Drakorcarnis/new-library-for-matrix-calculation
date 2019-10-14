@@ -45,7 +45,7 @@ LIB  = matrix
 #
 LIBDBGEXE = $(LIBDBGDIR)/lib$(LIB).so
 LIBDBGOBJS = $(addprefix $(OBJLIBDBGDIR)/, $(LIB_OBJS))
-DBGCFLAGS = -Og --coverage
+DBGCFLAGS = -Og --coverage 
 DBGLDFLAGS = -L$(LIBDBGDIR) -l$(LIB)
 $(OBJLIBDBGDIR)/%.o: %.c
 	$(CC) -c $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES)
@@ -86,7 +86,13 @@ REGRELOBJS = $(addprefix $(OBJRELDIR)/, $(REG_OBJS))
 .PHONY: prep all clean debug release remake testdebug testrelease regdebug regrelease coverage profile
 
 # Default build
-all: debug release testdebug testrelease regdebug regrelease
+all: prep debug release testdebug testrelease regdebug regrelease
+
+prep:
+	@mkdir -p $(BINDIR) $(BINDBGDIR) $(BINRELDIR)
+	@mkdir -p $(OBJDIR) $(OBJDBGDIR) $(OBJRELDIR)
+	@mkdir -p $(LIBDIR) $(LIBDBGDIR) $(LIBRELDIR)
+	@mkdir -p $(OBJLIBDIR) $(OBJLIBDBGDIR) $(OBJLIBRELDIR)
 
 debug: $(LIBDBGEXE)
 
@@ -98,34 +104,25 @@ release: $(LIBRELEXE)
 $(LIBRELEXE): $(LIBRELOBJS)
 	$(CC) $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $(LIBRELEXE) $^ $(LDFLAGS)
 
-testdebug: debug $(TESTDBGEXE)
+testdebug: $(TESTDBGEXE)
 
-$(TESTDBGEXE): $(TESTDBGOBJS)
+$(TESTDBGEXE): $(LIBDBGEXE) $(TESTDBGOBJS)
 	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(TESTDBGEXE) $^ $(DBGLDFLAGS)
 
-testrelease: release $(TESTRELEXE)
+testrelease: $(TESTRELEXE)
 
-$(TESTRELEXE): $(TESTRELOBJS)
+$(TESTRELEXE): $(LIBRELEXE) $(TESTRELOBJS)
 	$(CC) $(CFLAGS) $(RELCFLAGS) -o $(TESTRELEXE) $^ $(RELLDFLAGS)
 
-regdebug: debug $(REGDBGEXE)
+regdebug: $(REGDBGEXE)
 
-$(REGDBGEXE): $(REGDBGOBJS)
+$(REGDBGEXE): $(LIBDBGEXE) $(REGDBGOBJS)
 	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(REGDBGEXE) $^ $(DBGLDFLAGS) $(LDFLAGS)
   
-regrelease: release $(REGRELEXE)
+regrelease: $(REGRELEXE)
 
-$(REGRELEXE): $(REGRELOBJS)
+$(REGRELEXE): $(LIBRELEXE) $(REGRELOBJS)
 	$(CC) $(CFLAGS) $(RELCFLAGS) -o $(REGRELEXE) $^ $(RELLDFLAGS) $(LDFLAGS)
-
-#
-# Other rules
-#
-prep:
-	@mkdir -p $(BINDIR) $(BINDBGDIR) $(BINRELDIR)
-	@mkdir -p $(OBJDIR) $(OBJDBGDIR) $(OBJRELDIR)
-	@mkdir -p $(LIBDIR) $(LIBDBGDIR) $(LIBRELDIR)
-	@mkdir -p $(OBJLIBDIR) $(OBJLIBDBGDIR) $(OBJLIBRELDIR)
 
 .ONESHELL:
 
