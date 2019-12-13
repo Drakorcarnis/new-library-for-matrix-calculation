@@ -47,6 +47,20 @@ int test_matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
     free(formatted_time);
     return(1);
 }
+int test_BAKmatrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
+{
+    long long time = mstime();
+    matrix_t *mat_mult_matrix = BAKmatrix_mult_f(matrix1, matrix2);
+    long long time2 = mstime();
+    if(!mat_mult_matrix)return(0);
+    char *formatted_time = format_time(time2 - time, "ms");
+    printf("\n(%s)BAK M1*M2\n", formatted_time);
+    // matrix2file(mat_mult_matrix, "2000.txt");
+    // matrix_display_exact(mat_mult_matrix, 15);
+    matrix_free(mat_mult_matrix);
+    free(formatted_time);
+    return(1);
+}
 
 int test_matrix_pow_f(const matrix_t *matrix, int pow)
 {
@@ -150,6 +164,7 @@ int test_function_f(matrix_t*(*function)(const matrix_t*), matrix_t* matrix, cha
 
 int main(int argc, char *argv[]) {
     // matrix_t *matrix_p = str2matrix(argc-1, &argv[1], ',');
+    libmatrix_init();
     int rank;
     if (argc < 2 || atoi(argv[1]) < 1)
         rank = 10;
@@ -177,6 +192,7 @@ int main(int argc, char *argv[]) {
     // test_matrix_mult_scalar_f(matrix1, 0.5);
     // test_matrix_pow_f(matrix1, 3);
     test_matrix_mult_f(matrix1, matrix1);
+    test_BAKmatrix_mult_f(matrix1, matrix1);
     
     // test_function_f(&matrix_det_raw_f,matrix1, "|M|");
     // test_function_f(&matrix_com_f,matrix1, "com(M)");
@@ -194,5 +210,6 @@ int main(int argc, char *argv[]) {
     matrix_free(matrix1);
     // matrix_free(matrix2);
     // matrix_free(matrix3);
+    libmatrix_end();
     return 0;
 }

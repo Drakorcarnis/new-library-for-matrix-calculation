@@ -155,7 +155,11 @@ matrix_t * file2matrix(char *filename)
 {
     FILE *fp = fopen(filename, "r");
     if(!fp){
-        perror(__func__);
+        int len = snprintf(NULL, 0, "%s: %s", __func__, filename);
+        char *err = malloc(len);
+        sprintf(err,"%s: %s", __func__, filename);
+        perror(err);
+        free(err);
         return NULL;
     }
     int argc = 0, i;

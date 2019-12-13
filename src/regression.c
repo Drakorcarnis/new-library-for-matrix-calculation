@@ -6,7 +6,7 @@
 #include "matrix.h"
 #include "tools.h"
 
-#define DATA_PATH "/home/pi/new_library/src/data"
+#define DATA_PATH "/home/ubuntu/matrix/src/data"
 // Those test must be run with TYPE defined to double in matrix.h
 #define PRECISION 11
 int precision = PRECISION;
@@ -21,8 +21,8 @@ int precision = PRECISION;
 #define IN_1MATRIX_OUT_MATRIX_OUT   "matrix_transp",    "matrix_inv",           "matrix_sym_inv"  ,          "matrix_small_inv",         
 #define IN_1MATRIX_OUT_MATRIX_NAME  "matrix_transp_f",  "matrix_inverse_plu_f", "matrix_inverse_cholesky_f", "matrix_inverse_raw_f"
 
-#define IN_2MATRIX_OUT_MATRIX       matrix_add_f,   matrix_mult_f,      matrix_mult_f,      matrix_solve_plu_f,         matrix_solve_cholesky_f,        matrix_solve_plu_f,             matrix_solve_raw_f,  
-#define IN_2MATRIX_OUT_MATRIX_IN0   "matrix",       "matrix",           "matrix",           "matrix",                   "matrix_sym",                   "matrix_sym",                   "small_matrix",            
+#define IN_2MATRIX_OUT_MATRIX       matrix_add_f,   matrix_mult_f,      matrix_mult_f,      matrix_solve_plu_f,         matrix_solve_cholesky_f,        matrix_solve_plu_f,             matrix_solve_raw_f,
+#define IN_2MATRIX_OUT_MATRIX_IN0   "matrix",       "matrix",           "matrix",           "matrix",                   "matrix_sym",                   "matrix_sym",                   "small_matrix",
 #define IN_2MATRIX_OUT_MATRIX_IN1   "matrix",       "matrix",           "B",                "B",                        "B",                            "B",                            "B_small",    
 #define IN_2MATRIX_OUT_MATRIX_OUT   "matrix_add",   "matrix_mult",      "vector_mult",      "X",                        "X_sym",                        "X_sym",                        "X_small",
 #define IN_2MATRIX_OUT_MATRIX_NAME  "matrix_add_f", "matrix_mult_f",    "vector_mult_f",    "matrix_solve_plu_f",       "matrix_solve_cholesky_f",      "matrix_sym_solve_plu_f",       "matrix_solve_raw_f",
@@ -259,7 +259,7 @@ int main(int argc, char **argv) {
     if(argc > 1)
         precision = atoi(argv[1]);
     int size;
-    
+    libmatrix_init();
     TYPE(*test_function_in_1matrix_out_TYPE_f[])(const matrix_t*) = {IN_1MATRIX_OUT_DOUBLE};
     char* test_function_in_1matrix_out_TYPE_name[] = {IN_1MATRIX_OUT_DOUBLE_NAME};
     char* test_function_in_1matrix_out_TYPE_in[] = {IN_1MATRIX_OUT_DOUBLE_IN};
@@ -329,8 +329,8 @@ int main(int argc, char **argv) {
     test_function_in_1matrix_1int_out_matrix_out_output = chartab2matrixtab(test_function_in_1matrix_1int_out_matrix_out, size, data_path);
     for (int i = 0; i < size; i++)
         if(!test_function_in_matrix_int_out_matrix_f(test_function_in_1matrix_1int_out_matrix_f[i],test_function_in_1matrix_1int_out_matrix_in0_input[i], test_function_in_1matrix_1int_out_matrix_in1[i], test_function_in_1matrix_1int_out_matrix_out_output[i], test_function_in_1matrix_1int_out_matrix_name[i]))ret=1; 
-    free_matrixtab(test_function_in_1matrix_1int_out_matrix_in0_input, size);  
-    free_matrixtab(test_function_in_1matrix_1int_out_matrix_out_output, size);  
+    free_matrixtab(test_function_in_1matrix_1int_out_matrix_in0_input, size);
+    free_matrixtab(test_function_in_1matrix_1int_out_matrix_out_output, size);
     
     matrix_t*(*test_function_in_1matrix_2int_out_matrix_f[])(const matrix_t*, size_t, size_t) = {IN_1MATRIX_2INT_OUT_MATRIX};
     char* test_function_in_1matrix_2int_out_matrix_name[] = {IN_1MATRIX_2INT_OUT_MATRIX_NAME};
@@ -350,5 +350,6 @@ int main(int argc, char **argv) {
     
     if(!test_error_cases())ret=1;
     ret=0;
+    libmatrix_end();
     return ret;
 }

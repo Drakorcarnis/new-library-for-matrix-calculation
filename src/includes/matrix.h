@@ -8,6 +8,9 @@ typedef struct {
     TYPE **coeff;
 } matrix_t;
 
+// Library initialisation
+int         libmatrix_init(void);
+int         libmatrix_end(void);
 // Matrix creation functions
 matrix_t *  matrix_create(size_t rows, size_t columns);                         // Creates a 0-filled rows*columns matrix
 matrix_t *  matrix_identity(size_t n);                                                // Creates Identity matrix of rank n
@@ -24,6 +27,7 @@ matrix_t *  matrix_transp_f(const matrix_t *matrix);                            
 matrix_t *  matrix_add_f(const matrix_t *matrix1, const matrix_t *matrix2);                 // Return matrix1 + matrix2
 matrix_t *  matrix_mult_scalar_f(const matrix_t *matrix, TYPE lambda);                      // Return λ * matrix
 matrix_t *  matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2);                // Return matrix1 * matrix2
+matrix_t *  BAKmatrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2);                // Return matrix1 * matrix2
 matrix_t *  matrix_pow_f(const matrix_t *matrix, int pow);                                  // Return matrix^pow
 
 // Raw methods. For fun only. Do never use them, cuz you've NO reason to use them. Really.

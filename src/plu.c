@@ -18,7 +18,7 @@ static void plu_free(plu_t *plu);
 static plu_t * matrix_plu_f(const matrix_t *matrix);
 
 static plu_t * plu_create(size_t rank){
-    plu_t *plu = malloc(sizeof(plu_t));
+    plu_t *plu = calloc(1, sizeof(plu_t));
     if(!plu){
         perror(__func__);
         return NULL;
@@ -34,7 +34,8 @@ static void plu_free(plu_t *plu)
     if(!sanity_check(plu, __func__))return; 
     matrix_free(plu->L);
     matrix_free(plu->U);
-    free(plu->perm);
+    if(plu->perm)
+        free(plu->perm);
     free(plu);   
 }
 
@@ -74,7 +75,8 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
         if (p != i){
             matrix_row_permute(plu->L, p, i);
             matrix_row_permute(M, p, i);
-            plu->perm = realloc(plu->perm,++plu->nb_perm);
+            plu->nb_perm++;
+            plu->perm = plu->nb_perm > 1 ? realloc(plu->perm,plu->nb_perm*sizeof(*plu->perm)):malloc(plu->nb_perm*sizeof(*plu->perm));
             plu->perm[plu->nb_perm-1][0] = p;
             plu->perm[plu->nb_perm-1][1] = i;
         }

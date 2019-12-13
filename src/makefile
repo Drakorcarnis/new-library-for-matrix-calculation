@@ -1,13 +1,15 @@
+.ONESHELL:
 #
 # Coverage and profiling data
 #
+
 COV_DIR = ../cov
 PROF_DIR = ../prof
 #
 # Common compiler flags
 #
-CC     = gcc -pipe -fverbose-asm -g -ffast-math
-CFLAGS = -Wall -Werror -Wextra -std=c18
+CC      = gcc -pipe -fverbose-asm -g -ffast-math
+CFLAGS  = -Wall -Werror -Wextra -std=c11
 LDFLAGS = -lm -lgomp
 SOFLAGS = -shared -fPIC -fopenmp -march=native -ffast-math
 
@@ -40,27 +42,33 @@ TEST_EXE  = test
 REGRESSION_EXE = regression
 LIB  = matrix
 
+THPOOL_DIR = ../swc/thread_pool
+THPOOL_INCLUDES = $(THPOOL_DIR)/src/includes
+THPOOL_LIBDIR = $(THPOOL_DIR)/lib
+THPOOL_LIBDBGDIR = $(THPOOL_LIBDIR)/debug
+THPOOL_LIBRELDIR = $(THPOOL_LIBDIR)/release
+THPOOL_LIB = thread_pool
 #
 # Lib Debug build settings
 #
-LIBDBGEXE = $(LIBDBGDIR)/lib$(LIB).so
+LIBDBGSHARED = $(LIBDBGDIR)/lib$(LIB).so
 LIBDBGOBJS = $(addprefix $(OBJLIBDBGDIR)/, $(LIB_OBJS))
 DBGCFLAGS = -Og --coverage 
 DBGLDFLAGS = -L$(LIBDBGDIR) -l$(LIB)
-$(OBJLIBDBGDIR)/%.o: %.c
-	$(CC) -c $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES)
-$(OBJDBGDIR)/%.o: %.c
+$(OBJLIBDBGDIR)/%.o: %.c .prep
+	$(CC) -c $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES) -I$(THPOOL_INCLUDES)
+$(OBJDBGDIR)/%.o: %.c .prep
 	$(CC) -c $(CFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES)
 #
 # Lib Release build settings
 #
-LIBRELEXE = $(LIBRELDIR)/lib$(LIB).so
+LIBRELSHARED = $(LIBRELDIR)/lib$(LIB).so
 LIBRELOBJS = $(addprefix $(OBJLIBRELDIR)/, $(LIB_OBJS))
 RELCFLAGS = -Ofast -fopt-info-vec-optimized
 RELLDFLAGS = -L$(LIBRELDIR) -l$(LIB)
-$(OBJLIBRELDIR)/%.o: %.c
-	$(CC) -c $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES)
-$(OBJRELDIR)/%.o: %.c
+$(OBJLIBRELDIR)/%.o: %.c .prep
+	$(CC) -c $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES) -I$(THPOOL_INCLUDES)
+$(OBJRELDIR)/%.o: %.c .prep
 	$(CC) -c $(CFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES)
 #
 # Test Debug build settings
@@ -83,48 +91,51 @@ REGDBGOBJS = $(addprefix $(OBJDBGDIR)/, $(REG_OBJS))
 REGRELEXE = $(BINRELDIR)/$(REGRESSION_EXE)
 REGRELOBJS = $(addprefix $(OBJRELDIR)/, $(REG_OBJS))
 
-.PHONY: prep all clean debug release remake testdebug testrelease regdebug regrelease coverage profile
+.PHONY: all clean debug release remake testdebug testrelease regdebug regrelease coverage profile
 
 # Default build
-all: prep debug release testdebug testrelease regdebug regrelease
+all: debug release testdebug testrelease regdebug regrelease
 
-prep:
+.prep:
 	@mkdir -p $(BINDIR) $(BINDBGDIR) $(BINRELDIR)
 	@mkdir -p $(OBJDIR) $(OBJDBGDIR) $(OBJRELDIR)
 	@mkdir -p $(LIBDIR) $(LIBDBGDIR) $(LIBRELDIR)
 	@mkdir -p $(OBJLIBDIR) $(OBJLIBDBGDIR) $(OBJLIBRELDIR)
+	touch .prep
 
-debug: $(LIBDBGEXE)
+$(THPOOL_LIB):
+	@(cd $(THPOOL_DIR)/src && $(MAKE))
 
-$(LIBDBGEXE): $(LIBDBGOBJS)
-	$(CC) $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $(LIBDBGEXE) $^ $(LDFLAGS)
+debug: $(LIBDBGSHARED)
 
-release: $(LIBRELEXE)
+$(LIBDBGSHARED): $(THPOOL_LIB) $(LIBDBGOBJS)
+	$(CC) $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $(LIBDBGSHARED) $(LIBDBGOBJS) $(THPOOL_LIBDBGDIR)/lib$(THPOOL_LIB).a $(LDFLAGS)
 
-$(LIBRELEXE): $(LIBRELOBJS)
-	$(CC) $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $(LIBRELEXE) $^ $(LDFLAGS)
+release: $(LIBRELSHARED)
+
+$(LIBRELSHARED): $(THPOOL_LIB) $(LIBRELOBJS)
+	$(CC) $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $(LIBRELSHARED) $(LIBRELOBJS)  $(THPOOL_LIBRELDIR)/lib$(THPOOL_LIB).a $(LDFLAGS)
 
 testdebug: $(TESTDBGEXE)
 
-$(TESTDBGEXE): $(LIBDBGEXE) $(TESTDBGOBJS)
-	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(TESTDBGEXE) $^ $(DBGLDFLAGS)
+$(TESTDBGEXE): $(LIBDBGSHARED) $(TESTDBGOBJS)
+	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(TESTDBGEXE) $(TESTDBGOBJS) $(DBGLDFLAGS)
 
 testrelease: $(TESTRELEXE)
 
-$(TESTRELEXE): $(LIBRELEXE) $(TESTRELOBJS)
-	$(CC) $(CFLAGS) $(RELCFLAGS) -o $(TESTRELEXE) $^ $(RELLDFLAGS)
+$(TESTRELEXE): $(LIBRELSHARED) $(TESTRELOBJS)
+	$(CC) $(CFLAGS) $(RELCFLAGS) -o $(TESTRELEXE) $(TESTRELOBJS) $(RELLDFLAGS)
 
 regdebug: $(REGDBGEXE)
 
-$(REGDBGEXE): $(LIBDBGEXE) $(REGDBGOBJS)
-	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(REGDBGEXE) $^ $(DBGLDFLAGS) $(LDFLAGS)
+$(REGDBGEXE): $(LIBDBGSHARED) $(REGDBGOBJS)
+	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(REGDBGEXE) $(REGDBGOBJS) $(DBGLDFLAGS) $(LDFLAGS)
   
 regrelease: $(REGRELEXE)
 
-$(REGRELEXE): $(LIBRELEXE) $(REGRELOBJS)
-	$(CC) $(CFLAGS) $(RELCFLAGS) -o $(REGRELEXE) $^ $(RELLDFLAGS) $(LDFLAGS)
+$(REGRELEXE): $(LIBRELSHARED) $(REGRELOBJS)
+	$(CC) $(CFLAGS) $(RELCFLAGS) -o $(REGRELEXE) $(REGRELOBJS) $(RELLDFLAGS) $(LDFLAGS)
 
-.ONESHELL:
 
 coverage: regdebug
 	@rm -f $(LIBDBGDIR)/*.gcda $(LIBDBGDIR)/*.gcda
@@ -146,8 +157,10 @@ profile: regrelease
 	kcachegrind $(PROF_DIR)/callgrind.out
 
 clean:
-	@rm -f  $(LIBRELEXE)  $(LIBRELOBJS)             \
-	        $(LIBDBGEXE)  $(LIBDBGOBJS)             \
+	@rm -f  .prep
+	@(cd $(THPOOL_DIR)/src && $(MAKE) $@)
+	@rm -f  $(LIBRELSHARED)  $(LIBRELOBJS)             \
+	        $(LIBDBGSHARED)  $(LIBDBGOBJS)             \
 	        $(TESTDBGEXE) $(TESTDBGOBJS)            \
 	        $(TESTRELEXE) $(TESTRELOBJS)            \
 	        $(REGDBGEXE)  $(REGDBGOBJS)             \

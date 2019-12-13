@@ -5,11 +5,35 @@
 #include <math.h>
 #include <time.h>
 #include <omp.h>
+#include <sys/sysinfo.h>
 #include "matrix.h"
 #include "tools.h"
 #include "check.h"
+#include "thread_pool.h"
 
 // Matrix creation functions
+thread_pool_t thread_pool;
+int libmatrix_init(void)
+{
+    //Creating thread pool
+    printf("Création d'un pool de \x1b[34m%d\x1b[0m threads\n", 3*get_nprocs()/2);
+    if(thread_pool_create(&thread_pool, 3*get_nprocs()/2, NULL) != THREAD_POOL_OK){
+        printf("\x1b[31mproblem0\x1b[0m\n");
+        return 0;
+    }
+    return 1;
+}
+
+int libmatrix_end(void)
+{
+    //Creating thread pool
+    printf("Destruction du pool de threads\n");
+    if(thread_pool_destroy(&thread_pool) != THREAD_POOL_OK){
+        printf("\x1b[31mproblem1\x1b[0m\n");
+        return 0;
+    }
+    return 1;
+}
 
 matrix_t * matrix_create(size_t rows, size_t columns)
 {
@@ -79,16 +103,43 @@ void matrix_free(matrix_t *matrix)
 // Matrix computation functions
 
 // Basic operations
+typedef struct {
+    matrix_t *transpose_matrix;
+    const matrix_t *matrix;
+}transpose_work_t;
+
+// static void _transpose_task(void* arg, int i)
+// {
+    // transpose_work_t *work = arg;
+    // matrix_t *transpose_matrix = work->transpose_matrix;
+    // const matrix_t *matrix = work->matrix;
+    // for (size_t j = 0; j < transpose_matrix->columns; j++)
+       // transpose_matrix->coeff[i][j] = matrix->coeff[j][i];
+// }
+
+// matrix_t * _matrix_transp_f(const matrix_t *matrix)
+// {
+    // if(!sanity_check((void *)matrix, __func__))return NULL; 
+    // matrix_t *transpose_matrix = matrix_create(matrix->columns, matrix->rows);
+    // if(!transpose_matrix)return NULL;
+    // transpose_work_t work = {transpose_matrix, matrix};
+    // for (size_t i = 0; i < transpose_matrix->rows; i++){
+        // thread_pool_queue_index(&thread_pool, _transpose_task, &work, i);
+    // }
+    // if(thread_pool_wait(&thread_pool) != THREAD_POOL_OK){
+        // printf("\x1b[31mproblem\x1b[0m\n");
+    // }
+    // return transpose_matrix;
+// }
 matrix_t * matrix_transp_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL; 
     matrix_t *transpose_matrix = matrix_create(matrix->columns, matrix->rows);
-    if(transpose_matrix){
-        #pragma omp parallel for
-        for (size_t i = 0; i < transpose_matrix->rows; i++)
-            for (size_t j = 0; j < transpose_matrix->columns; j++)
-                transpose_matrix->coeff[i][j]=matrix->coeff[j][i];
-    }
+    if(!transpose_matrix)return NULL;
+    #pragma omp parallel for
+    for (size_t i = 0; i < transpose_matrix->rows; i++)
+        for (size_t j = 0; j < transpose_matrix->columns; j++)
+            transpose_matrix->coeff[i][j]=matrix->coeff[j][i];
     return transpose_matrix;
 }
 
@@ -126,8 +177,61 @@ matrix_t * matrix_mult_scalar_f(const matrix_t *matrix, TYPE lambda)
     }
     return mult_matrix;
 }
-    
+
+typedef struct {
+    size_t n, m, step;
+    const matrix_t *matrix1;
+    matrix_t *mult, *columns;
+}mult_work_t;
+
+static void _mult_task(void* arg, int i)
+{
+    mult_work_t *work = arg;
+    size_t n = work->n;
+    size_t m = work->m;
+    size_t step = work->step;
+    TYPE **matrix_coeff = work->matrix1->coeff;
+    TYPE **mult_coeff = work->mult->coeff;
+    TYPE **columns_coeff = work->columns->coeff;
+    int ie = n < i+step ? n : i+step;
+    for (size_t j = 0; j < m; j+=step) {
+        int je = m < j+step ? m : j+step;
+        for (int ii = i; ii < ie; ii++){
+            for (int jj = j; jj < je; jj++){
+                TYPE sum = 0;
+                for (size_t k = 0; k < n; k++)
+                    sum+=matrix_coeff[ii][k]*columns_coeff[jj][k];
+                mult_coeff[ii][jj] += sum;
+            }
+        }
+    }
+}
 matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
+{
+    if(!sanity_check((void *)matrix1, __func__))return NULL; 
+    if(!sanity_check((void *)matrix2, __func__))return NULL; 
+    if((matrix2->rows != matrix1->columns)){
+        fprintf(stderr, "%s: not multiplicable matrix (matrix2->rows != matrix1->columns)\n", __func__);
+        return NULL;
+    }
+    matrix_t *mult = matrix_create(matrix1->columns, matrix2->columns);
+    if(!sanity_check((void *)mult, __func__))return NULL;
+    matrix_t *columns = matrix_transp_f(matrix2);
+    if(!sanity_check((void *)columns, __func__))return NULL; 
+    size_t default_step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
+    size_t step = default_step > 0 ? default_step:16;
+    mult_work_t work = {matrix1->rows, matrix2->columns, step, matrix1, mult, columns};
+    fifo_work_t fifo_work = {0, NULL, _mult_task, (void *)&work};
+    for (size_t i = 0; i < matrix1->rows; i+=step)
+        thread_pool_queue_work(&thread_pool, _mult_task, &fifo_work, i);
+    if(thread_pool_wait(&thread_pool) != THREAD_POOL_OK){
+        printf("\x1b[31mproblem\x1b[0m\n");
+    }
+    matrix_free(columns);
+    return mult;
+}
+
+matrix_t * BAKmatrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
 {
     if(!sanity_check((void *)matrix1, __func__))return NULL; 
     if(!sanity_check((void *)matrix2, __func__))return NULL; 
@@ -137,7 +241,7 @@ matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
     }
    	size_t n = matrix1->rows, m = matrix2->columns;
     matrix_t *mult = matrix_create(matrix1->columns, matrix2->columns);
-    if(!sanity_check((void *)mult, __func__))return NULL; 
+    if(!sanity_check((void *)mult, __func__))return NULL;
     matrix_t *columns = matrix_transp_f(matrix2);
     if(!sanity_check((void *)columns, __func__))return NULL; 
     size_t default_step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
@@ -160,34 +264,6 @@ matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
     matrix_free(columns);
     return mult;
 }
-// matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
-// {
-// ... Initialize mul1 and mul2
-// int i, i2, j, j2, k, k2;
-// double *restrict rres;
-// double *restrict rmul1;
-// double *restrict rmul2;
-    // size_t default_step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
-    // size_t step = default_step > 0 ? default_step:16;
-// for (i = 0; i < N; i += SM)
-    // for (j = 0; j < N; j += SM)
-        // for (k = 0; k < N; k += SM)
-            // for (i2 = 0, rres = &res[i][j], rmul1 = &mul1[i][k]; i2 < SM;++i2, rres += N, rmul1 += N){
-                // _mm_prefetch (&rmul1[8], _MM_HINT_NTA);
-                // for (k2 = 0, rmul2 = &mul2[k][j]; k2 < SM; ++k2, rmul2 += N){
-                    // __m128d m1d = _mm_load_sd (&rmul1[k2]);
-                    // m1d = _mm_unpacklo_pd (m1d, m1d);
-                    // for (j2 = 0; j2 < SM; j2 += 2){
-                        // __m128d m2 = _mm_load_pd (&rmul2[j2]);
-                        // __m128d r2 = _mm_load_pd (&rres[j2]);
-                        // _mm_store_pd (&rres[j2],
-                        // _mm_add_pd (_mm_mul_pd (m2, m1d), r2));
-                    // }
-                // }
-            // }
-// ... use res matrix
-// return 0;
-// }
 
 
 matrix_t * matrix_pow_f(const matrix_t *matrix, int pow)
