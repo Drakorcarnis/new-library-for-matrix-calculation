@@ -8,14 +8,14 @@
 static void * _slave_func(void *args);
 
 enum thread_state{
-    THREAD_STARTING,
+    THREAD_STARTING=0,
     THREAD_READY,
     THREAD_BUSY,
     THREAD_STOPPED
 };
 
 enum work_flag{
-    WORK_STOP,
+    WORK_STOP=0,
     WORK_WORK,
     WORK_INDEX,
 };
@@ -24,12 +24,16 @@ enum work_flag{
 static void * _slave_func(void *args)
 {
     slave_t *self = args;
-    fifo_work_t *work = NULL;
+    fifo_work_t *work;
     int ret;
     int index;
     while(1){
+        pthread_mutex_lock(&self->mutex);
         self->state = THREAD_READY;
-        ret = fifo_pop_index(self->queue, (void **)&work, &index, FIFO_WAIT);
+        pthread_cond_signal(&self->cond);
+        pthread_mutex_unlock(&self->mutex);
+        work = NULL;
+        ret = fifo_pop_index_cond(self->queue, (void **)&work, &index, FIFO_WAIT, &self->state, THREAD_BUSY);
         if(ret != FIFO_SUCCESS){
             fprintf(stderr, "\x1b[31m%s:%s:%d: fifo_pop: error %d\x1b[0m", __FILE__, __func__, __LINE__, ret);
             continue;
@@ -38,18 +42,19 @@ static void * _slave_func(void *args)
             fprintf(stderr, "\x1b[31m%s:%s:%d: received NULL work\x1b[0m\n", __FILE__, __func__, __LINE__);
             continue;
         }
-        self->state = THREAD_BUSY;
         if(work->flag == WORK_STOP){
             free(work);
-            goto end;
+            break;
         } else if(work->flag == WORK_WORK && work->func){
                 (work->func)(work->args);
                 free(work);
         } else if(work->flag == WORK_INDEX && work->func_index){
                 (work->func_index)(work->args, index);
+        } else {
+            fprintf(stderr, "\x1b[31m%s:%s:%d: fifo_pop: inconsistency (work->flag= %d)\x1b[0m\n", __FILE__, __func__, __LINE__, work->flag);
+            continue;
         }
     }
-end:
     self->state = THREAD_STOPPED;
     return NULL;
 }
@@ -74,6 +79,8 @@ int thread_pool_create(thread_pool_t *thread_pool, unsigned int num_slaves, pthr
     for (unsigned int i = 0; i < num_slaves; i++){
         thread_pool->slaves[i].state = THREAD_STARTING;
         thread_pool->slaves[i].queue = thread_pool->queue;
+        pthread_mutex_init(&thread_pool->slaves[i].mutex, NULL);
+        pthread_cond_init(&thread_pool->slaves[i].cond, NULL);
         ret = pthread_create(&thread_pool->slaves[i].id, attr, _slave_func, &thread_pool->slaves[i]);
         if(ret != 0){
             fprintf(stderr, "%s:%s:%d: error %d\n", __FILE__, __func__, __LINE__, ret);
@@ -122,11 +129,10 @@ int thread_pool_queue(thread_pool_t *thread_pool, void (*func)(void *), void *ar
     return THREAD_POOL_OK;
 }
 
-int thread_pool_queue_work(thread_pool_t *thread_pool, void (*func)(void *, int), fifo_work_t *work, int index)
+int thread_pool_queue_work(thread_pool_t *thread_pool, fifo_work_t *work, int index)
 {
     int ret;
     if(!thread_pool)return THREAD_POOL_UNALLOCATED;
-    if(!func)return THREAD_POOL_NULLPTR;
     work->flag = WORK_INDEX;
     ret = fifo_push_index(thread_pool->queue, (void *)work, index, FIFO_WAIT);
     if(ret != FIFO_SUCCESS){
@@ -143,12 +149,11 @@ int thread_pool_wait(thread_pool_t *thread_pool)
         fprintf(stderr, "\x1b[31m%s:%s:%d: %d\x1b[0m\n", __FILE__, __func__, __LINE__, ret);
         return THREAD_POOL_KO;
     }
-    int busy = 1;
-    while(busy){
-        busy = 0;
-        for (unsigned int i = 0; i<thread_pool->num_slaves; i++)
-            if (thread_pool->slaves[i].state == THREAD_BUSY)
-                busy = 1;
+    for (unsigned int i = 0; i<thread_pool->num_slaves; i++){
+        pthread_mutex_lock(&thread_pool->slaves[i].mutex);
+        if (thread_pool->slaves[i].state != THREAD_READY)
+            pthread_cond_wait(&thread_pool->slaves[i].cond, &thread_pool->slaves[i].mutex);
+        pthread_mutex_unlock(&thread_pool->slaves[i].mutex);
     }
     return THREAD_POOL_OK;
 }
@@ -174,6 +179,8 @@ int thread_pool_destroy(thread_pool_t *thread_pool)
             perror(NULL);
             return THREAD_POOL_KO;
         }
+        pthread_cond_destroy(&thread_pool->slaves[i].cond);
+        pthread_mutex_destroy(&thread_pool->slaves[i].mutex);
     }
     ret = fifo_current_size(thread_pool->queue, &current_size);
     if(ret != FIFO_SUCCESS){

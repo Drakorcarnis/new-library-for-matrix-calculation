@@ -103,17 +103,17 @@ all: debug release testdebug testrelease regdebug regrelease
 	@mkdir -p $(OBJLIBDIR) $(OBJLIBDBGDIR) $(OBJLIBRELDIR)
 	touch .prep
 
-$(THPOOL_LIB):
-	@(cd $(THPOOL_DIR)/src && $(MAKE))
+.$(THPOOL_LIB):
+	@(cd $(THPOOL_DIR)/src && $(MAKE) && cd - && touch .$(THPOOL_LIB))
 
 debug: $(LIBDBGSHARED)
 
-$(LIBDBGSHARED): $(THPOOL_LIB) $(LIBDBGOBJS)
+$(LIBDBGSHARED): .$(THPOOL_LIB) $(LIBDBGOBJS)
 	$(CC) $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $(LIBDBGSHARED) $(LIBDBGOBJS) $(THPOOL_LIBDBGDIR)/lib$(THPOOL_LIB).a $(LDFLAGS)
 
 release: $(LIBRELSHARED)
 
-$(LIBRELSHARED): $(THPOOL_LIB) $(LIBRELOBJS)
+$(LIBRELSHARED): .$(THPOOL_LIB) $(LIBRELOBJS)
 	$(CC) $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $(LIBRELSHARED) $(LIBRELOBJS)  $(THPOOL_LIBRELDIR)/lib$(THPOOL_LIB).a $(LDFLAGS)
 
 testdebug: $(TESTDBGEXE)
@@ -158,6 +158,7 @@ profile: regrelease
 
 clean:
 	@rm -f  .prep
+	@rm -f  .$(THPOOL_LIB)
 	@(cd $(THPOOL_DIR)/src && $(MAKE) $@)
 	@rm -f  $(LIBRELSHARED)  $(LIBRELOBJS)             \
 	        $(LIBDBGSHARED)  $(LIBDBGOBJS)             \

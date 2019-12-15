@@ -13,4 +13,5 @@ int         matrix2file(matrix_t *matrix, char * filename);
 char * format_time(const long long input_time, char* format);
 long long mstime(void);
 int test_matrix_equality(const matrix_t *matrix1, const matrix_t *matrix2, int precision);
+int matrix_diff(const matrix_t *matrix1, const matrix_t *matrix2, int precision, FILE *stream);
 #endif

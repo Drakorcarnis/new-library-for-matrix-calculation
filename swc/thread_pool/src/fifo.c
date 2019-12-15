@@ -113,7 +113,7 @@ int fifo_pop(fifo_t *fifo, void **elt, int wait)
     }
     if(pthread_mutex_lock(&fifo->pop_cond_mutex))return FIFO_FAIL_MUTEX;
     if(wait == FIFO_WAIT && fifo->curr_nb_elt == 0){
-        printf("\x1b[31mPOP WAITING\x1b[0m\n");
+        // printf("\x1b[31mPOP WAITING\x1b[0m\n");
         pthread_cond_wait(&fifo->pop_cond, &fifo->pop_cond_mutex);
     }
     if(pthread_mutex_unlock(&fifo->pop_cond_mutex))return FIFO_FAIL_MUTEX;
@@ -135,7 +135,7 @@ int fifo_pop(fifo_t *fifo, void **elt, int wait)
     if(pthread_mutex_unlock(&fifo->pop_mutex))return FIFO_FAIL_MUTEX;
     return FIFO_SUCCESS;
 }
-int fifo_pop_index(fifo_t *fifo, void **elt, int *index, int wait)
+int fifo_pop_index_cond(fifo_t *fifo, void **elt, int *index, int wait, int *cond, int value)
 {
     if(!fifo)return FIFO_FAIL_UNALLOCATED;
     if(pthread_mutex_lock(&fifo->pop_mutex)!=0)return FIFO_FAIL_MUTEX;
@@ -145,7 +145,7 @@ int fifo_pop_index(fifo_t *fifo, void **elt, int *index, int wait)
     }
     if(pthread_mutex_lock(&fifo->pop_cond_mutex))return FIFO_FAIL_MUTEX;
     if(wait == FIFO_WAIT && fifo->curr_nb_elt == 0){
-        printf("\x1b[31mPOP WAITING\x1b[0m\n");
+        // printf("\x1b[31mPOP WAITING\x1b[0m\n");
         pthread_cond_wait(&fifo->pop_cond, &fifo->pop_cond_mutex);
     }
     if(pthread_mutex_unlock(&fifo->pop_cond_mutex))return FIFO_FAIL_MUTEX;
@@ -154,6 +154,7 @@ int fifo_pop_index(fifo_t *fifo, void **elt, int *index, int wait)
     fifo->buf[fifo->pop_index] = NULL;
     if(pthread_mutex_lock(&fifo->push_cond_mutex))return FIFO_FAIL_MUTEX;
     if(pthread_cond_signal(&fifo->push_cond))return FIFO_FAIL_COND;
+    *cond = value;
     if(pthread_mutex_lock(&fifo->curr_nb_mutex))return FIFO_FAIL_MUTEX;
     fifo->curr_nb_elt--;
     if(pthread_mutex_unlock(&fifo->curr_nb_mutex))return FIFO_FAIL_MUTEX;
@@ -199,6 +200,7 @@ int fifo_destroy(fifo_t *fifo)
     if(pthread_cond_destroy(&fifo->pop_cond) != 0)ret = FIFO_FAIL_COND;
     if(pthread_cond_destroy(&fifo->empty_cond) != 0)ret = FIFO_FAIL_COND;
     free(fifo->buf);
+    free(fifo->index_buf);
     return ret;
 }
 int fifo_show(fifo_t *fifo)

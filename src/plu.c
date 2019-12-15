@@ -59,7 +59,7 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
     TYPE sum;
     size_t default_step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
     size_t step = default_step > 0 ? default_step:16;
-    long long time = mstime();
+    // long long time = mstime();
     for (size_t i = 0; i < n; i++){
         for (size_t j = i; j < n; j+=step){
             int je = n < j+step ? n : j+step;
@@ -90,7 +90,7 @@ static plu_t * matrix_plu_f(const matrix_t *matrix)
             }
         }
     }
-    printf("plu: %s\n", format_time(mstime()-time, "ms"));
+    // printf("plu: %s\n", format_time(mstime()-time, "ms"));
     matrix_free(M);
     matrix_t *trueU = matrix_transp_f(plu->U);
     matrix_free(plu->U);
@@ -167,18 +167,18 @@ matrix_t * matrix_solve_plu_f(const matrix_t *A, const matrix_t *B)
     if(!sanity_check((void *)A, __func__))return NULL;
     if(!square_check(A, __func__))return NULL; 
     plu_t *plu = matrix_plu_f(A);
-    long long time = mstime();
+    // long long time = mstime();
     matrix_t *permB = matrix_copy(B);
     for (size_t i = 0; i < plu->nb_perm; i++)
         matrix_row_permute(permB, plu->perm[i][0], plu->perm[i][1]);
-    printf("perm: %s\n", format_time(mstime()-time, "ms"));
-    time = mstime();
+    // printf("perm: %s\n", format_time(mstime()-time, "ms"));
+    // time = mstime();
     matrix_t *Z = matrix_solve_low_trig(plu->L, permB);
-    printf("diag inf: %s\n", format_time(mstime()-time, "ms"));
+    // printf("diag inf: %s\n", format_time(mstime()-time, "ms"));
     matrix_free(permB);
-    time = mstime();
+    // time = mstime();
     matrix_t *X = matrix_solve_up_trig(plu->U, Z);
-    printf("diag sup: %s\n", format_time(mstime()-time, "ms"));
+    // printf("diag sup: %s\n", format_time(mstime()-time, "ms"));
     matrix_free(Z);
     plu_free(plu);
     return(X);

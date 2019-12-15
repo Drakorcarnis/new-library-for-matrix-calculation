@@ -47,14 +47,28 @@ int test_matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
     free(formatted_time);
     return(1);
 }
-int test_BAKmatrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
+int test_OMPmatrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
 {
     long long time = mstime();
-    matrix_t *mat_mult_matrix = BAKmatrix_mult_f(matrix1, matrix2);
+    matrix_t *mat_mult_matrix = OMPmatrix_mult_f(matrix1, matrix2);
     long long time2 = mstime();
     if(!mat_mult_matrix)return(0);
     char *formatted_time = format_time(time2 - time, "ms");
-    printf("\n(%s)BAK M1*M2\n", formatted_time);
+    printf("\n(%s)OMP M1*M2\n", formatted_time);
+    // matrix2file(mat_mult_matrix, "2000.txt");
+    // matrix_display_exact(mat_mult_matrix, 15);
+    matrix_free(mat_mult_matrix);
+    free(formatted_time);
+    return(1);
+}
+int test_MONOmatrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
+{
+    long long time = mstime();
+    matrix_t *mat_mult_matrix = MONOmatrix_mult_f(matrix1, matrix2);
+    long long time2 = mstime();
+    if(!mat_mult_matrix)return(0);
+    char *formatted_time = format_time(time2 - time, "ms");
+    printf("\n(%s)MONO M1*M2\n", formatted_time);
     // matrix2file(mat_mult_matrix, "2000.txt");
     // matrix_display_exact(mat_mult_matrix, 15);
     matrix_free(mat_mult_matrix);
@@ -192,7 +206,8 @@ int main(int argc, char *argv[]) {
     // test_matrix_mult_scalar_f(matrix1, 0.5);
     // test_matrix_pow_f(matrix1, 3);
     test_matrix_mult_f(matrix1, matrix1);
-    test_BAKmatrix_mult_f(matrix1, matrix1);
+    test_OMPmatrix_mult_f(matrix1, matrix1);
+    test_MONOmatrix_mult_f(matrix1, matrix1);
     
     // test_function_f(&matrix_det_raw_f,matrix1, "|M|");
     // test_function_f(&matrix_com_f,matrix1, "com(M)");

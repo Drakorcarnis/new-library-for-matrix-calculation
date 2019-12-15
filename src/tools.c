@@ -266,3 +266,26 @@ int test_matrix_equality(const matrix_t *matrix1, const matrix_t *matrix2, int p
     }
     return 1;
 }
+
+int matrix_diff(const matrix_t *matrix1, const matrix_t *matrix2, int precision, FILE *stream)
+{
+    if(!sanity_check(matrix1, __func__))return 0; 
+    if(!sanity_check(matrix2, __func__))return 0;
+    int ret = 1;
+    if((matrix1->rows != matrix2->rows) || (matrix1->columns != matrix2->columns)){
+        fprintf(stream, "\x1b[31mmatrix_diff: matrix have different size\x1b[0m");
+        return 0;
+    }
+    for (size_t i=0; i<matrix1->rows; i++){
+        for (size_t j=0; j<matrix1->columns; j++){
+            TYPE val1 = matrix1->coeff[i][j];
+            TYPE val2 = matrix2->coeff[i][j];
+            if(fabs(val1 - val2) > pow(10, -precision)){
+                fprintf(stream, "\x1b[31m%.*g|%.*g \x1b[0m", precision, val1, precision, val2);
+                ret = 0;
+            } else fprintf(stream, "%.*g ", precision, val1);
+        }
+        fprintf(stream, "\n");
+    }
+    return ret;
+}

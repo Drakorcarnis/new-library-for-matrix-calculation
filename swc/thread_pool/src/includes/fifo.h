@@ -38,7 +38,7 @@ int fifo_init(fifo_t *fifo, size_t size);
 int fifo_push(fifo_t *fifo, void *elt, int wait);
 int fifo_push_index(fifo_t *fifo, void *elt, int index, int wait);
 int fifo_pop(fifo_t *fifo, void **elt, int wait);
-int fifo_pop_index(fifo_t *fifo, void **elt, int *index, int wait);
+int fifo_pop_index_cond(fifo_t *fifo, void **elt, int *index, int wait, int *cond, int value);
 int fifo_wait_empty(fifo_t *fifo);
 int fifo_current_size(fifo_t *fifo, int* curr_nb_elt);
 int fifo_destroy(fifo_t *fifo);

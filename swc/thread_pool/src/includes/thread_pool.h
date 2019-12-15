@@ -6,6 +6,8 @@ typedef struct {
     pthread_t       id;
     int             state;
     fifo_t          *queue;
+    pthread_mutex_t mutex;
+    pthread_cond_t  cond;
 } slave_t;
 
 typedef struct {
@@ -30,7 +32,7 @@ enum thread_pool_ret{
 
 int thread_pool_create(thread_pool_t *thread_pool, unsigned int num_slaves, pthread_attr_t *attr);
 int thread_pool_queue(thread_pool_t *thread_pool, void (*func)(void *), void *args);
-int thread_pool_queue_work(thread_pool_t *thread_pool, void (*func)(void *, int), fifo_work_t *work, int index);
+int thread_pool_queue_work(thread_pool_t *thread_pool, fifo_work_t *work, int index);
 int thread_pool_wait(thread_pool_t *thread_pool);
 int thread_pool_destroy(thread_pool_t *thread_pool);
 #endif

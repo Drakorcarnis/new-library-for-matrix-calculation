@@ -6,7 +6,7 @@
 #include "matrix.h"
 #include "tools.h"
 
-#define DATA_PATH "/home/ubuntu/matrix/src/data"
+#define DATA_PATH "/home/cbdj/new_library/src/data"
 // Those test must be run with TYPE defined to double in matrix.h
 #define PRECISION 11
 int precision = PRECISION;
@@ -55,11 +55,10 @@ typedef struct {
 static void process_result(result_t res)
 {
     char *formatted_time = format_time(res.mstime, "ms");
-    if (res.result)
-        printf("\033[0;32m[OK]");
-    else
-        printf("\033[0;31m[NOK]");
-    printf("%s (%s)\033[0m\n", res.test_name, formatted_time);
+    if (res.result){
+        // printf("\033[0;32m[OK]%s (%s)\033[0m\n", res.test_name, formatted_time);
+    }else
+        printf("\033[0;31m[NOK]%s (%s)\033[0m\n", res.test_name, formatted_time);
     free(formatted_time);
 }
 
@@ -89,10 +88,8 @@ static int test_function_in_matrix_out_matrix_f(matrix_t*(*function)(const matri
     if (!res.result){
         printf("input:\n");
         matrix_display_exact(matrix, precision);
-        printf("expected:\n");
-        matrix_display_exact(expected, precision);
-        printf("got:\n");
-        matrix_display_exact(ret, precision);
+        printf("expected|got\n");
+        matrix_diff(expected, ret, precision, stdout);
     }
     matrix_free(ret);
     return(res.result);
@@ -110,10 +107,8 @@ static int test_function_in_2matrix_out_matrix_f(matrix_t*(*function)(const matr
         matrix_display_exact(matrix1, precision);
         printf("input2:\n");
         matrix_display_exact(matrix2, precision);
-        printf("expected:\n");
-        matrix_display_exact(expected, precision);
-        printf("got:\n");
-        matrix_display_exact(ret, precision);
+        printf("expected|got\n");
+        matrix_diff(expected, ret, precision, stdout);
     }
     matrix_free(ret);
     return(res.result);
@@ -130,9 +125,8 @@ static int test_function_in_matrix_TYPE_out_matrix_f(matrix_t*(*function)(const 
         printf("input:\n");
         matrix_display_exact(matrix, precision);
         printf("expected:\n");
-        matrix_display_exact(expected, precision);
-        printf("got:\n");
-        matrix_display_exact(ret, precision);
+        printf("expected|got\n");
+        matrix_diff(expected, ret, precision, stdout);
     }
     matrix_free(ret);
     return(res.result);
@@ -148,10 +142,8 @@ static int test_function_in_matrix_int_out_matrix_f(matrix_t*(*function)(const m
     if (!res.result){
         printf("input:\n");
         matrix_display_exact(matrix, precision);
-        printf("expected:\n");
-        matrix_display_exact(expected, precision);
-        printf("got:\n");
-        matrix_display_exact(ret, precision);
+        printf("expected|got\n");
+        matrix_diff(expected, ret, precision, stdout);
     }
     matrix_free(ret);
     return(res.result);
@@ -167,10 +159,8 @@ static int test_function_in_matrix_2int_out_matrix_f(matrix_t*(*function)(const 
     if (!res.result){
         printf("input:\n");
         matrix_display_exact(matrix, precision);
-        printf("expected:\n");
-        matrix_display_exact(expected, precision);
-        printf("got:\n");
-        matrix_display_exact(ret, precision);
+        printf("expected|got\n");
+        matrix_diff(expected, ret, precision, stdout);
     }
     matrix_free(ret);
     return(res.result);
@@ -259,7 +249,8 @@ int main(int argc, char **argv) {
     if(argc > 1)
         precision = atoi(argv[1]);
     int size;
-    libmatrix_init();
+    libmatrix_init();  
+    while(1){
     TYPE(*test_function_in_1matrix_out_TYPE_f[])(const matrix_t*) = {IN_1MATRIX_OUT_DOUBLE};
     char* test_function_in_1matrix_out_TYPE_name[] = {IN_1MATRIX_OUT_DOUBLE_NAME};
     char* test_function_in_1matrix_out_TYPE_in[] = {IN_1MATRIX_OUT_DOUBLE_IN};
@@ -282,7 +273,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < size; i++)
         if(!test_function_in_matrix_out_matrix_f(test_function_in_1matrix_out_matrix_f[i],test_function_in_1matrix_out_matrix_in_input[i], test_function_in_1matrix_out_matrix_out_output[i], test_function_in_1matrix_out_matrix_name[i]))ret=1; 
     free_matrixtab(test_function_in_1matrix_out_matrix_in_input, size);  
-    free_matrixtab(test_function_in_1matrix_out_matrix_out_output, size);  
+    free_matrixtab(test_function_in_1matrix_out_matrix_out_output, size);
     
     matrix_t*(*test_function_in_2matrix_out_matrix[])(const matrix_t*, const matrix_t*) = {IN_2MATRIX_OUT_MATRIX};
     char* test_function_in_2matrix_out_matrix_name[] = {IN_2MATRIX_OUT_MATRIX_NAME};
@@ -348,6 +339,7 @@ int main(int argc, char **argv) {
     free_matrixtab(test_function_in_1matrix_2int_out_matrix_in0_input, size);  
     free_matrixtab(test_function_in_1matrix_2int_out_matrix_out_output, size); 
     
+    }
     if(!test_error_cases())ret=1;
     ret=0;
     libmatrix_end();

@@ -27,7 +27,8 @@ matrix_t *  matrix_transp_f(const matrix_t *matrix);                            
 matrix_t *  matrix_add_f(const matrix_t *matrix1, const matrix_t *matrix2);                 // Return matrix1 + matrix2
 matrix_t *  matrix_mult_scalar_f(const matrix_t *matrix, TYPE lambda);                      // Return λ * matrix
 matrix_t *  matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2);                // Return matrix1 * matrix2
-matrix_t *  BAKmatrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2);                // Return matrix1 * matrix2
+matrix_t *  OMPmatrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2);                // Return matrix1 * matrix2
+matrix_t *  MONOmatrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2);                // Return matrix1 * matrix2
 matrix_t *  matrix_pow_f(const matrix_t *matrix, int pow);                                  // Return matrix^pow
 
 // Raw methods. For fun only. Do never use them, cuz you've NO reason to use them. Really.
