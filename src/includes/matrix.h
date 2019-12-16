@@ -1,7 +1,11 @@
 #ifndef MATRIX
 #define MATRIX
-#define TYPE double
-
+#define ALIGN 32
+// #define TYPE double
+// typedef float __attribute__((aligned (64))) TYPE;
+typedef double __attribute__((aligned (ALIGN))) TYPE;
+// typedef _Complex double __attribute__((aligned (ALIGN))) COMPLEX_TYPE;
+typedef _Complex double COMPLEX_TYPE;
 typedef struct {
     size_t rows;
     size_t columns;

@@ -6,7 +6,7 @@
 #include "matrix.h"
 #include "tools.h"
 
-#define DATA_PATH "/home/cbdj/new_library/src/data"
+#define DATA_PATH "/home/ubuntu/matrix/src/data"
 // Those test must be run with TYPE defined to double in matrix.h
 #define PRECISION 11
 int precision = PRECISION;
@@ -56,7 +56,7 @@ static void process_result(result_t res)
 {
     char *formatted_time = format_time(res.mstime, "ms");
     if (res.result){
-        // printf("\033[0;32m[OK]%s (%s)\033[0m\n", res.test_name, formatted_time);
+        printf("\033[0;32m[OK]%s (%s)\033[0m\n", res.test_name, formatted_time);
     }else
         printf("\033[0;31m[NOK]%s (%s)\033[0m\n", res.test_name, formatted_time);
     free(formatted_time);
@@ -250,13 +250,13 @@ int main(int argc, char **argv) {
         precision = atoi(argv[1]);
     int size;
     libmatrix_init();  
-    while(1){
-    TYPE(*test_function_in_1matrix_out_TYPE_f[])(const matrix_t*) = {IN_1MATRIX_OUT_DOUBLE};
+    // while(1){
+    TYPE (*test_function_in_1matrix_out_TYPE_f[])(const matrix_t*) = {IN_1MATRIX_OUT_DOUBLE};
     char* test_function_in_1matrix_out_TYPE_name[] = {IN_1MATRIX_OUT_DOUBLE_NAME};
     char* test_function_in_1matrix_out_TYPE_in[] = {IN_1MATRIX_OUT_DOUBLE_IN};
     size = sizeof(test_function_in_1matrix_out_TYPE_in)/sizeof(char*);
     matrix_t** test_function_in_1matrix_out_TYPE_in_input = chartab2matrixtab(test_function_in_1matrix_out_TYPE_in, size, data_path);
-    TYPE test_function_in_1matrix_out_TYPE_out[] = {IN_1MATRIX_OUT_DOUBLE_OUT}; 
+    double test_function_in_1matrix_out_TYPE_out[] __attribute__((aligned(64))) = {IN_1MATRIX_OUT_DOUBLE_OUT}; 
     for (int i = 0; i < size; i++)
         if(!test_function_in_matrix_out_TYPE_f(test_function_in_1matrix_out_TYPE_f[i],test_function_in_1matrix_out_TYPE_in_input[i], test_function_in_1matrix_out_TYPE_out[i], test_function_in_1matrix_out_TYPE_name[i]))ret=1;  
     free_matrixtab(test_function_in_1matrix_out_TYPE_in_input, size);
@@ -298,7 +298,7 @@ int main(int argc, char **argv) {
     char* test_function_in_1matrix_TYPE_out_matrix_in0[] = {IN_1MATRIX_1DOUBLE_OUT_MATRIX_IN0};
     size = sizeof(test_function_in_1matrix_TYPE_out_matrix_in0)/sizeof(char*);
     matrix_t** test_function_in_1matrix_TYPE_out_matrix_in0_input = chartab2matrixtab(test_function_in_1matrix_TYPE_out_matrix_in0, size, data_path);
-    TYPE test_function_in_1matrix_TYPE_out_matrix_in1[] = {IN_1MATRIX_1DOUBLE_OUT_MATRIX_IN1};
+    double test_function_in_1matrix_TYPE_out_matrix_in1[] __attribute__((aligned(64))) = {IN_1MATRIX_1DOUBLE_OUT_MATRIX_IN1};
     char* test_function_in_1matrix_TYPE_out_matrix_out[] = {IN_1MATRIX_1DOUBLE_OUT_MATRIX_OUT};
     matrix_t** test_function_in_1matrix_TYPE_out_matrix_out_output = NULL;
     size = sizeof(test_function_in_1matrix_TYPE_out_matrix_out)/sizeof(char*);
@@ -339,7 +339,7 @@ int main(int argc, char **argv) {
     free_matrixtab(test_function_in_1matrix_2int_out_matrix_in0_input, size);  
     free_matrixtab(test_function_in_1matrix_2int_out_matrix_out_output, size); 
     
-    }
+    // }
     if(!test_error_cases())ret=1;
     ret=0;
     libmatrix_end();

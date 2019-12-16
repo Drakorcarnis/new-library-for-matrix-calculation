@@ -6,18 +6,18 @@
 #include "tools.h"
 #include "check.h"
 
-static TYPE complex * matrix_cholesky_f(const matrix_t *matrix);
+static COMPLEX_TYPE * matrix_cholesky_f(const matrix_t *matrix);
 
 
-static TYPE complex * matrix_cholesky_f(const matrix_t *matrix)
+static COMPLEX_TYPE * matrix_cholesky_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return NULL;
     if(!square_check(matrix, __func__))return NULL;
     if(!symetry_check(matrix, __func__))return NULL;
     int n = matrix->rows;
-    TYPE complex sum;
-    size_t size = n*n*sizeof(TYPE complex);
-    TYPE complex *L = aligned_alloc(32, size);
+    COMPLEX_TYPE sum;
+    size_t size = n*n*sizeof(COMPLEX_TYPE);
+    COMPLEX_TYPE *L = aligned_alloc(ALIGN, size);
     if(!L){
         perror(__func__);
         return NULL;
@@ -38,15 +38,15 @@ static TYPE complex * matrix_cholesky_f(const matrix_t *matrix)
     return(L);  
 } 
 
-TYPE complex ** matrix_solve_diag_inf_comp(TYPE complex *A[], TYPE complex *B[], int n, int m)
+COMPLEX_TYPE ** matrix_solve_diag_inf_comp(COMPLEX_TYPE *A[], COMPLEX_TYPE *B[], int n, int m)
 {
-    TYPE complex **X = calloc(n,sizeof(TYPE complex *));
+    COMPLEX_TYPE **X = calloc(n,sizeof(COMPLEX_TYPE *));
     if(!X){
         perror(__func__);
         return NULL;
     }
     for (int i = 0; i < n; i++){
-        X[i] = calloc(m,sizeof(TYPE complex));
+        X[i] = aligned_alloc(ALIGN, m*sizeof(COMPLEX_TYPE));
     }
     for (int i = 0; i < m; i++){
         for (int j = 0; j < n; j++){
@@ -58,15 +58,15 @@ TYPE complex ** matrix_solve_diag_inf_comp(TYPE complex *A[], TYPE complex *B[],
     return(X);
 }
 
-TYPE complex ** matrix_solve_diag_sup_comp(TYPE complex *A[], TYPE complex *B[], int n, int m)
+COMPLEX_TYPE ** matrix_solve_diag_sup_comp(COMPLEX_TYPE *A[], COMPLEX_TYPE *B[], int n, int m)
 {
-    TYPE complex **X = calloc(n,sizeof(TYPE complex *));
+    COMPLEX_TYPE **X = calloc(n,sizeof(COMPLEX_TYPE *));
     if(!X){
         perror(__func__);
         return NULL;
     }
     for (int i = 0; i < n; i++){
-        X[i] = calloc(m,sizeof(TYPE complex));
+        X[i] = aligned_alloc(ALIGN, m*sizeof(COMPLEX_TYPE));
     }
     for (int i = 0; i < m; i++){
         for (int j = n - 1; j >= 0; j--){
@@ -84,34 +84,35 @@ matrix_t * matrix_solve_cholesky_f(const matrix_t *A, const matrix_t *B)
     if(!square_check(A, __func__))return NULL;
     if(!symetry_check(A, __func__))return NULL;
     int n = A->rows, m = B->columns;
-    TYPE complex **comp_B = calloc(n,sizeof(TYPE complex *));
+    COMPLEX_TYPE **comp_B = calloc(n,sizeof(COMPLEX_TYPE *));
     if(!comp_B){
         perror(__func__);
         return NULL;
     }
     for (int i = 0; i < n; i++){
-        comp_B[i] = calloc(m,sizeof(TYPE complex));
+        comp_B[i] = aligned_alloc(ALIGN, m*sizeof(COMPLEX_TYPE));
     }
     for (int i=0; i < n; i++){
-        #pragma omp simd
+        comp_B[i] = __builtin_assume_aligned(comp_B[i], ALIGN);
+        B->coeff[i] = __builtin_assume_aligned(B->coeff[i], ALIGN);
         for (int j=0; j < m; j++){
-            comp_B[i][j] = (TYPE complex)B->coeff[i][j];
+            comp_B[i][j] = (COMPLEX_TYPE)B->coeff[i][j];
         }
     }
-    TYPE complex *L = matrix_cholesky_f(A);
-    TYPE complex **stackL = calloc(n,sizeof(TYPE complex *));
+    COMPLEX_TYPE *L = matrix_cholesky_f(A);
+    COMPLEX_TYPE **stackL = calloc(n,sizeof(COMPLEX_TYPE *));
     if(!stackL){
         perror(__func__);
         return NULL;
     }
-    TYPE complex **stackLT = calloc(n,sizeof(TYPE complex *));
+    COMPLEX_TYPE **stackLT = calloc(n,sizeof(COMPLEX_TYPE *));
     if(!stackLT){
         perror(__func__);
         return NULL;
     }
     for (int i = 0; i < n; i++){
-        stackL[i] = calloc(n,sizeof(TYPE complex));
-        stackLT[i] = calloc(n,sizeof(TYPE complex));
+        stackL[i] = aligned_alloc(ALIGN, n*sizeof(COMPLEX_TYPE));
+        stackLT[i] = aligned_alloc(ALIGN, n*sizeof(COMPLEX_TYPE));
     }
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
@@ -120,14 +121,14 @@ matrix_t * matrix_solve_cholesky_f(const matrix_t *A, const matrix_t *B)
         }
     }
     free(L);
-    TYPE complex **Z = matrix_solve_diag_inf_comp(stackL, comp_B, n, m);
+    COMPLEX_TYPE **Z = matrix_solve_diag_inf_comp(stackL, comp_B, n, m);
     for (int i = 0; i < n; i++){
         free(comp_B[i]);
         free(stackL[i]);
     }
     free(comp_B);
     free(stackL);
-    TYPE complex **X = matrix_solve_diag_sup_comp(stackLT, Z, n, m);
+    COMPLEX_TYPE **X = matrix_solve_diag_sup_comp(stackLT, Z, n, m);
     for (int i = 0; i < n; i++){
         free(Z[i]);
         free(stackLT[i]);
@@ -137,7 +138,8 @@ matrix_t * matrix_solve_cholesky_f(const matrix_t *A, const matrix_t *B)
     matrix_t *ret = matrix_create(n,m);
     if(ret){
         for (int i=0; i < n; i++){
-            #pragma omp simd
+            ret->coeff[i] = __builtin_assume_aligned(ret->coeff[i], ALIGN);
+            X[i] = __builtin_assume_aligned(X[i], ALIGN);
             for (int j=0; j < m; j++){
                 ret->coeff[i][j] = creal(X[i][j]);
             }
@@ -165,7 +167,7 @@ TYPE matrix_det_cholesky_f(const matrix_t *matrix)
 {
     if(!sanity_check((void *)matrix, __func__))return 0;
     if(!square_check(matrix, __func__))return 0; 
-    TYPE complex *L = matrix_cholesky_f(matrix);
+    COMPLEX_TYPE *L = matrix_cholesky_f(matrix);
     complex det = 1;
     int n = matrix->rows;
     for (int i=0; i < n; i++)

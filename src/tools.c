@@ -44,6 +44,7 @@ static TYPE str2TYPE(const char *str, size_t len)
 
 static void _matrix_display(const matrix_t *matrix, int precision, FILE *stream)
 {
+    if(!sanity_check((void *)matrix, __func__))return; 
     TYPE val;
     int len = 0;
     for (size_t i = 0; i < matrix->rows; i++) {
@@ -141,6 +142,7 @@ matrix_t * str2matrix(int argc, char **argv, char separator)
 
 int matrix2file(matrix_t *matrix, char * filename)
 {
+    if(!sanity_check((void *)matrix, __func__))return 0; 
     FILE *fp = fopen(filename, "w");
     if(!fp){
         perror(__func__);

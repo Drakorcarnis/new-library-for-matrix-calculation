@@ -42,12 +42,17 @@ TEST_EXE  = test
 REGRESSION_EXE = regression
 LIB  = matrix
 
+#
+# SWC thread_pool lib build settings
+#
 THPOOL_DIR = ../swc/thread_pool
 THPOOL_INCLUDES = $(THPOOL_DIR)/src/includes
 THPOOL_LIBDIR = $(THPOOL_DIR)/lib
 THPOOL_LIBDBGDIR = $(THPOOL_LIBDIR)/debug
 THPOOL_LIBRELDIR = $(THPOOL_LIBDIR)/release
 THPOOL_LIB = thread_pool
+THPOOL_LIB_DBG_STATIC = $(THPOOL_LIBDBGDIR)/lib$(THPOOL_LIB).a
+THPOOL_LIB_REL_STATIC = $(THPOOL_LIBRELDIR)/lib$(THPOOL_LIB).a
 #
 # Lib Debug build settings
 #
@@ -103,18 +108,21 @@ all: debug release testdebug testrelease regdebug regrelease
 	@mkdir -p $(OBJLIBDIR) $(OBJLIBDBGDIR) $(OBJLIBRELDIR)
 	touch .prep
 
-.$(THPOOL_LIB):
-	@(cd $(THPOOL_DIR)/src && $(MAKE) && cd - && touch .$(THPOOL_LIB))
+$(THPOOL_LIB_REL_STATIC):
+	@(cd $(THPOOL_DIR)/src && $(MAKE) release)
 
+$(THPOOL_LIB_DBG_STATIC):
+	@(cd $(THPOOL_DIR)/src && $(MAKE) debug)
+    
 debug: $(LIBDBGSHARED)
 
-$(LIBDBGSHARED): .$(THPOOL_LIB) $(LIBDBGOBJS)
-	$(CC) $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $(LIBDBGSHARED) $(LIBDBGOBJS) $(THPOOL_LIBDBGDIR)/lib$(THPOOL_LIB).a $(LDFLAGS)
+$(LIBDBGSHARED): $(THPOOL_LIB_DBG_STATIC) $(LIBDBGOBJS)
+	$(CC) $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $(LIBDBGSHARED) $(LIBDBGOBJS) $(THPOOL_LIB_DBG_STATIC) $(LDFLAGS)
 
 release: $(LIBRELSHARED)
 
-$(LIBRELSHARED): .$(THPOOL_LIB) $(LIBRELOBJS)
-	$(CC) $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $(LIBRELSHARED) $(LIBRELOBJS)  $(THPOOL_LIBRELDIR)/lib$(THPOOL_LIB).a $(LDFLAGS)
+$(LIBRELSHARED): $(THPOOL_LIB_REL_STATIC) $(LIBRELOBJS)
+	$(CC) $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $(LIBRELSHARED) $(LIBRELOBJS)  $(THPOOL_LIB_REL_STATIC) $(LDFLAGS)
 
 testdebug: $(TESTDBGEXE)
 
@@ -158,7 +166,6 @@ profile: regrelease
 
 clean:
 	@rm -f  .prep
-	@rm -f  .$(THPOOL_LIB)
 	@(cd $(THPOOL_DIR)/src && $(MAKE) $@)
 	@rm -f  $(LIBRELSHARED)  $(LIBRELOBJS)             \
 	        $(LIBDBGSHARED)  $(LIBDBGOBJS)             \
