@@ -1,11 +1,9 @@
-#define _POSIX_C_SOURCE (200112L)
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <omp.h>
 #include <sys/sysinfo.h>
 #include "matrix.h"
 #include "tools.h"
@@ -17,8 +15,8 @@ thread_pool_t thread_pool;
 int libmatrix_init(void)
 {
     //Creating thread pool
-    // int nthreads = 3*get_nprocs()/2;
-    int nthreads = 2;
+    int nthreads = 3*get_nprocs()/2;
+    // int nthreads = 2;
     printf("Création d'un pool de \x1b[36m%d\x1b[0m threads\n", nthreads);
     if(thread_pool_create(&thread_pool, nthreads, NULL) != THREAD_POOL_OK){
         printf("\x1b[31mproblem0\x1b[0m\n");
@@ -135,7 +133,7 @@ matrix_t * matrix_transp_f(const matrix_t *matrix)
     matrix_t *transpose_matrix = matrix_create(matrix->columns, matrix->rows);
     if(!transpose_matrix)return NULL;
     transpose_arg_t arg = {transpose_matrix, matrix};
-    fifo_work_t work = {0, NULL, _transpose_task, (void *)&arg};
+    thread_pool_work_t work = {0, NULL, _transpose_task, (void *)&arg};
     for (size_t i = 0; i < transpose_matrix->rows; i++){
         thread_pool_queue_work(&thread_pool, &work, i);
     }
@@ -228,7 +226,7 @@ matrix_t * matrix_mult_f(const matrix_t *matrix1, const matrix_t *matrix2)
     size_t default_step = 2*sysconf(_SC_LEVEL1_DCACHE_LINESIZE)/sizeof(TYPE);
     size_t step = default_step > 0 ? default_step:16;
     mult_work_t args = {matrix1->rows, matrix2->columns, step, matrix1, mult, columns};
-    fifo_work_t work = {0, NULL, _mult_task, (void *)&args};
+    thread_pool_work_t work = {0, NULL, _mult_task, (void *)&args};
     for (size_t i = 0; i < matrix1->rows; i+=step)
         thread_pool_queue_work(&thread_pool, &work, i);
     if(thread_pool_wait(&thread_pool) != THREAD_POOL_OK){

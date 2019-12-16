@@ -6,7 +6,7 @@
 #include "matrix.h"
 #include "tools.h"
 
-#define DATA_PATH "/home/ubuntu/matrix/src/data"
+#define DATA_PATH "/home/cbdj/new_library/src/data"
 // Those test must be run with TYPE defined to double in matrix.h
 #define PRECISION 11
 int precision = PRECISION;

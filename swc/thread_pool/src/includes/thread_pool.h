@@ -21,7 +21,7 @@ typedef struct {
     void (*func)(void *);
     void (*func_index)(void *, int);
     void *args;
-} fifo_work_t;
+} thread_pool_work_t;
 
 enum thread_pool_ret{
     THREAD_POOL_KO,
@@ -32,7 +32,7 @@ enum thread_pool_ret{
 
 int thread_pool_create(thread_pool_t *thread_pool, unsigned int num_slaves, pthread_attr_t *attr);
 int thread_pool_queue(thread_pool_t *thread_pool, void (*func)(void *), void *args);
-int thread_pool_queue_work(thread_pool_t *thread_pool, fifo_work_t *work, int index);
+int thread_pool_queue_work(thread_pool_t *thread_pool, thread_pool_work_t *work, int index);
 int thread_pool_wait(thread_pool_t *thread_pool);
 int thread_pool_destroy(thread_pool_t *thread_pool);
 #endif

@@ -24,7 +24,7 @@ enum work_flag{
 static void * _slave_func(void *args)
 {
     slave_t *self = args;
-    fifo_work_t *work;
+    thread_pool_work_t *work;
     int ret;
     int index;
     while(1){
@@ -117,7 +117,7 @@ int thread_pool_queue(thread_pool_t *thread_pool, void (*func)(void *), void *ar
     int ret;
     if(!thread_pool)return THREAD_POOL_UNALLOCATED;
     if(!func)return THREAD_POOL_NULLPTR;
-    fifo_work_t *work = malloc(sizeof(*work));
+    thread_pool_work_t *work = malloc(sizeof(*work));
     work->flag = WORK_WORK;
     work->func = func;
     work->args = args;
@@ -129,7 +129,7 @@ int thread_pool_queue(thread_pool_t *thread_pool, void (*func)(void *), void *ar
     return THREAD_POOL_OK;
 }
 
-int thread_pool_queue_work(thread_pool_t *thread_pool, fifo_work_t *work, int index)
+int thread_pool_queue_work(thread_pool_t *thread_pool, thread_pool_work_t *work, int index)
 {
     int ret;
     if(!thread_pool)return THREAD_POOL_UNALLOCATED;
@@ -161,10 +161,10 @@ int thread_pool_wait(thread_pool_t *thread_pool)
 int thread_pool_destroy(thread_pool_t *thread_pool)
 {
     int ret;
-    fifo_work_t *work;
+    thread_pool_work_t *work;
     int current_size = 0;
     for (unsigned int i = 0; i<thread_pool->num_slaves; i++){
-        work = malloc(sizeof(fifo_work_t));
+        work = malloc(sizeof(thread_pool_work_t));
         work->flag = WORK_STOP;
         ret = fifo_push(thread_pool->queue, (void *)work, FIFO_WAIT);
         if(ret != FIFO_SUCCESS){

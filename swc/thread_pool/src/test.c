@@ -4,7 +4,6 @@
 #include <math.h>
 #include <string.h>
 #include <sys/time.h>
-#include <omp.h>
 #include <sys/sysinfo.h>
 #include "thread_pool.h"
 #include "fifo.h"
@@ -52,8 +51,7 @@ long long mstime(void)
 }
 
 typedef struct{
-    int min;
-    int max;
+    int work_len;
     int* ret;
 }work_t;
 
@@ -66,56 +64,44 @@ int is_prime(int n)
     return 1;
 }
 
-void prime_calc(void *arg)
+void prime_calc(void *arg, int n)
 {
     // Recherche de tous les nombres premiers entre work->min et work->max
     work_t *work = arg;
+    int min = n*work->work_len;
+    int max = min + work->work_len - 1;
     int j=0;
-    for(int i = work->min; i<work->max; i++){
+    for(int i = min; i<max; i++){
        if (is_prime(i))
-            work->ret[j++] = i;
+            work->ret[min + j++] = i;
     }
 }
-static work_t* create_work_pool(int work_nb, int work_len)
-{
-    // Preparing the work
-    work_t *works = calloc(work_nb, sizeof(*works));
-    int min = 0;
-    int max = work_len-1;
-    for (int i=0;i<work_nb;i++){
-        works[i].min = min;
-        works[i].max = max;
-        min+=work_len;
-        max+=work_len;
-        works[i].ret = calloc(work_len, sizeof(int));
-    }
-    return works;
-}
-    
-static work_t* _main_thread(int work_nb, int work_len)
+
+static work_t _main_thread(int work_nb, int work_len)
 {
     // Working without thread_pool
     printf("\t* le thread principal: ");
     fflush(stdout);
-    work_t *works = create_work_pool(work_nb, work_len);
+    work_t work = {work_len, calloc(work_nb*work_len, sizeof(int))};
     long long time = mstime();
     for (int i=0;i<work_nb;i++)
-        prime_calc(&works[i]);
+        prime_calc(&work, i);
     char *formatted_time = format_time(mstime() - time, "ms");
     printf("%s\n", formatted_time);
     free(formatted_time);
-    return works;
+    return work;
 }
 
-static work_t* _thread_pool(int work_nb, int work_len)
+static work_t _thread_pool(int work_nb, int work_len)
 {
     // Working with thread_pool
     printf("\t* le pool de threads: ");
     fflush(stdout);
-    work_t *works = create_work_pool(work_nb, work_len);
+    work_t work = {work_len, calloc(work_nb*work_len, sizeof(int))};
+    thread_pool_work_t thpool_work = {0, NULL, prime_calc, &work};
     long long time = mstime();
     for (int i=0;i<work_nb;i++){
-        if(thread_pool_queue(&thread_pool, prime_calc, &works[i]) != THREAD_POOL_OK){
+        if(thread_pool_queue_work(&thread_pool, &thpool_work, i) != THREAD_POOL_OK){
             printf("\x1b[31mproblem1\x1b[0m\n");
         }
     }
@@ -125,23 +111,7 @@ static work_t* _thread_pool(int work_nb, int work_len)
     char *formatted_time = format_time(mstime() - time, "ms");
     printf("%s\n", formatted_time);
     free(formatted_time);
-    return works;
-}
-
-static work_t* _open_mp(int work_nb, int work_len)
-{
-    // Working with openMP
-    long long time = mstime();
-    printf("\t* openMP: ");
-    fflush(stdout);
-    work_t *works = create_work_pool(work_nb, work_len);
-    #pragma omp parallel for
-    for (int i=0;i<work_nb;i++)
-        prime_calc(&works[i]);
-    char *formatted_time = format_time(mstime() - time, "ms");
-    printf("%s\n", formatted_time);
-    free(formatted_time);
-    return works;
+    return work;
 }
 
 int main(int argc, char ** argv)
@@ -163,10 +133,9 @@ int main(int argc, char ** argv)
     }
     
     //Preparing test functions
-    int num_func = 3;
-    work_t* (*func_tab[3])(int work_nb, int work_len) = {_main_thread, _thread_pool, _open_mp};
-    work_t* res[3] = {NULL};
-    
+    int num_func = 2;
+    work_t (*func_tab[2])(int work_nb, int work_len) = {_main_thread, _thread_pool};
+    work_t res[num_func];
     //Executing test functions
     printf("Traitement de \x1b[34m%d\x1b[0m sacs de \x1b[34m%dg\x1b[0m de données par :\n", work_nb, work_len);
     for (int i=0; i<num_func; i++)
@@ -178,7 +147,7 @@ int main(int argc, char ** argv)
     for (int i=1; i<num_func; i++){
         for (int j=0; j<work_nb; j++){
             for (int k=0; k<work_len; k++){
-                if(res[i][j].ret[k] != res[0][j].ret[k]){
+                if(res[i].ret[j*work_len+k] != res[0].ret[j*work_len+k]){
                     printf("\x1b[31mInconsistency in function %d\x1b[0m\n", i);
                     ok = 0;
                     break;
@@ -189,11 +158,7 @@ int main(int argc, char ** argv)
     if(ok)printf("\x1b[32mOK\x1b[0m\n");
     // Freeing results
     for (int i=0; i<num_func; i++)
-        for (int j=0;j<work_nb;j++)
-            free(res[i][j].ret);
-    for (int i=0; i<num_func; i++)
-        free(res[i]);
-    
+        free(res[i].ret);
     //Displaying the result
     // int len = snprintf(NULL,0, "[ ");
     // for (int i=0;i<work_nb;i++)

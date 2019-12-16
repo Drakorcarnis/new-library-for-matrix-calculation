@@ -10,8 +10,8 @@ PROF_DIR = ../prof
 #
 CC      = gcc -pipe -fverbose-asm -g -ffast-math
 CFLAGS  = -Wall -Werror -Wextra -std=c11
-LDFLAGS = -lm -lgomp
-SOFLAGS = -shared -fPIC -fopenmp -march=native -ffast-math
+LDFLAGS = -lm -lpthread
+OPTFLAGS = -march=native -ffast-math
 
 BINDIR = ../bin
 BINDBGDIR = $(BINDIR)/debug
@@ -61,7 +61,7 @@ LIBDBGOBJS = $(addprefix $(OBJLIBDBGDIR)/, $(LIB_OBJS))
 DBGCFLAGS = -Og --coverage 
 DBGLDFLAGS = -L$(LIBDBGDIR) -l$(LIB)
 $(OBJLIBDBGDIR)/%.o: %.c .prep
-	$(CC) -c $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES) -I$(THPOOL_INCLUDES)
+	$(CC) -c $(CFLAGS) $(OPTFLAGS) $(DBGCFLAGS) -fPIC -o $@ $< -I$(INCLUDES) -I$(THPOOL_INCLUDES)
 $(OBJDBGDIR)/%.o: %.c .prep
 	$(CC) -c $(CFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES)
 #
@@ -72,7 +72,7 @@ LIBRELOBJS = $(addprefix $(OBJLIBRELDIR)/, $(LIB_OBJS))
 RELCFLAGS = -Ofast -fopt-info-vec-optimized
 RELLDFLAGS = -L$(LIBRELDIR) -l$(LIB)
 $(OBJLIBRELDIR)/%.o: %.c .prep
-	$(CC) -c $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES) -I$(THPOOL_INCLUDES)
+	$(CC) -c $(CFLAGS) $(OPTFLAGS) $(RELCFLAGS) -fPIC -o $@ $< -I$(INCLUDES) -I$(THPOOL_INCLUDES)
 $(OBJRELDIR)/%.o: %.c .prep
 	$(CC) -c $(CFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES)
 #
@@ -117,32 +117,32 @@ $(THPOOL_LIB_DBG_STATIC):
 debug: $(LIBDBGSHARED)
 
 $(LIBDBGSHARED): $(THPOOL_LIB_DBG_STATIC) $(LIBDBGOBJS)
-	$(CC) $(CFLAGS) $(SOFLAGS) $(DBGCFLAGS) -o $(LIBDBGSHARED) $(LIBDBGOBJS) $(THPOOL_LIB_DBG_STATIC) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(OPTFLAGS) $(DBGCFLAGS) -shared -o $(LIBDBGSHARED) $(LIBDBGOBJS) $(THPOOL_LIB_DBG_STATIC) $(LDFLAGS)
 
 release: $(LIBRELSHARED)
 
 $(LIBRELSHARED): $(THPOOL_LIB_REL_STATIC) $(LIBRELOBJS)
-	$(CC) $(CFLAGS) $(SOFLAGS) $(RELCFLAGS) -o $(LIBRELSHARED) $(LIBRELOBJS)  $(THPOOL_LIB_REL_STATIC) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(OPTFLAGS) $(RELCFLAGS) -shared -o $(LIBRELSHARED) $(LIBRELOBJS)  $(THPOOL_LIB_REL_STATIC) $(LDFLAGS)
 
 testdebug: $(TESTDBGEXE)
 
 $(TESTDBGEXE): $(LIBDBGSHARED) $(TESTDBGOBJS)
-	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(TESTDBGEXE) $(TESTDBGOBJS) $(DBGLDFLAGS)
+	$(CC) $(CFLAGS) $(OPTFLAGS) $(DBGCFLAGS) -o $(TESTDBGEXE) $(TESTDBGOBJS) $(DBGLDFLAGS)
 
 testrelease: $(TESTRELEXE)
 
 $(TESTRELEXE): $(LIBRELSHARED) $(TESTRELOBJS)
-	$(CC) $(CFLAGS) $(RELCFLAGS) -o $(TESTRELEXE) $(TESTRELOBJS) $(RELLDFLAGS)
+	$(CC) $(CFLAGS) $(OPTFLAGS) $(RELCFLAGS) -o $(TESTRELEXE) $(TESTRELOBJS) $(RELLDFLAGS)
 
 regdebug: $(REGDBGEXE)
 
 $(REGDBGEXE): $(LIBDBGSHARED) $(REGDBGOBJS)
-	$(CC) $(CFLAGS) $(DBGCFLAGS) -o $(REGDBGEXE) $(REGDBGOBJS) $(DBGLDFLAGS) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(OPTFLAGS) $(DBGCFLAGS) -o $(REGDBGEXE) $(REGDBGOBJS) $(DBGLDFLAGS) $(LDFLAGS)
   
 regrelease: $(REGRELEXE)
 
 $(REGRELEXE): $(LIBRELSHARED) $(REGRELOBJS)
-	$(CC) $(CFLAGS) $(RELCFLAGS) -o $(REGRELEXE) $(REGRELOBJS) $(RELLDFLAGS) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(OPTFLAGS) $(RELCFLAGS) -o $(REGRELEXE) $(REGRELOBJS) $(RELLDFLAGS) $(LDFLAGS)
 
 
 coverage: regdebug
@@ -161,7 +161,7 @@ coverage: regdebug
 profile: regrelease
 	mkdir -p $(PROF_DIR)
 	rm -f $(PROF_DIR)/callgrind.out
-	LD_LIBRARY_PATH="$(LIBRELDIR)" valgrind  --tool=callgrind --simulate-cache=yes --callgrind-out-file=$(PROF_DIR)/callgrind.out $(TESTRELEXE) 1000
+	LD_LIBRARY_PATH="$(LIBRELDIR)" valgrind  --tool=callgrind --dump-instr=yes --simulate-cache=yes --callgrind-out-file=$(PROF_DIR)/callgrind.out $(TESTRELEXE) 1000
 	kcachegrind $(PROF_DIR)/callgrind.out
 
 clean:
