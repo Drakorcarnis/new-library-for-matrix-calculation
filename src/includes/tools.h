@@ -8,7 +8,7 @@ matrix_t *  file2matrix(char *filename);                                        
 // Matrix display function
 void        matrix_display(const matrix_t *matrix);                                         // Display matrix representation to stdout with standard precision
 void        matrix_display_exact(const matrix_t *matrix, int precision);                    // Display matrix representation to stdout with specified precision
-int         matrix2file(matrix_t *matrix, char * filename);
+int         matrix2file(matrix_t *matrix, int precision, char * filename);
 
 char * format_time(const long long input_time, char* format);
 long long mstime(void);

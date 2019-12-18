@@ -21,10 +21,16 @@ static int sanity_check(const void *pointer, const char *function_name)
 static TYPE str2TYPE(const char *str, size_t len)
 {
     char *num = calloc(len+1, sizeof(char));
-    char *den = calloc(len+1, sizeof(char));
-    if ((!num) || (!den)){
+    if (!num){
         perror(__func__);
         fprintf(stderr, "Wanna alloc %ld\n", len+1); 
+        return -1;
+    }
+    char *den = calloc(len+1, sizeof(char));
+    if (!den){
+        perror(__func__);
+        fprintf(stderr, "Wanna alloc %ld\n", len+1);
+        free(num);
         return -1;
     }
     den[0] = '1';
@@ -140,7 +146,7 @@ matrix_t * str2matrix(int argc, char **argv, char separator)
     return matrix;
 }
 
-int matrix2file(matrix_t *matrix, char * filename)
+int matrix2file(matrix_t *matrix, int precision, char * filename)
 {
     if(!sanity_check((void *)matrix, __func__))return 0; 
     FILE *fp = fopen(filename, "w");
@@ -148,7 +154,7 @@ int matrix2file(matrix_t *matrix, char * filename)
         perror(__func__);
         return 0;
     }
-    _matrix_display(matrix, 15, fp);
+    _matrix_display(matrix, precision, fp);
     fclose(fp);
     return 1;
 }

@@ -141,11 +141,11 @@ $(REGRELEXE): $(LIBRELSHARED) $(REGRELOBJS)
 
 coverage: regdebug
 	@rm -f $(LIBDBGDIR)/*.gcda $(LIBDBGDIR)/*.gcda
-	@LD_LIBRARY_PATH="$(LIBDBGDIR)" $(REGDBGEXE)
+	@LD_LIBRARY_PATH="$(LIBDBGDIR)" $(REGDBGEXE) 2>/dev/null
 	@rm -f *.gcda *.gcno
 	@cp $(OBJLIBDBGDIR)/*.gcno .
 	@cp $(OBJLIBDBGDIR)/*.gcda .
-	@gcov -n thread_pool.c
+	# @gcov -n thread_pool.c
 	@lcov -q -d . -c -o coverage.info > /dev/null
 	@rm -rf $(COV_DIR)
 	@genhtml -o $(COV_DIR) -t "couverture des tests" coverage.info > /dev/null

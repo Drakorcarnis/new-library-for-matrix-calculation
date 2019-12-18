@@ -17,7 +17,7 @@ int libmatrix_init(void)
     //Creating thread pool
     int nthreads = 3*get_nprocs()/2;
     // int nthreads = 2;
-    printf("Création d'un pool de \x1b[36m%d\x1b[0m threads\n", nthreads);
+    // printf("Création d'un pool de \x1b[36m%d\x1b[0m threads\n", nthreads);
     if(thread_pool_create(&thread_pool, nthreads, NULL) != THREAD_POOL_OK){
         printf("\x1b[31mproblem0\x1b[0m\n");
         return 0;
@@ -28,7 +28,7 @@ int libmatrix_init(void)
 int libmatrix_end(void)
 {
     //Creating thread pool
-    printf("Destruction du pool de threads\n");
+    // printf("Destruction du pool de threads\n");
     if(thread_pool_destroy(&thread_pool) != THREAD_POOL_OK){
         printf("\x1b[31mproblem1\x1b[0m\n");
         return 0;
