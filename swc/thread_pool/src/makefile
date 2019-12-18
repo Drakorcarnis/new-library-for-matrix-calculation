@@ -6,11 +6,10 @@ PROF_DIR = ../prof
 #
 # Common compiler flags
 #
-CC      = gcc -pipe -fverbose-asm -g -ffast-math
+CC      = gcc -pipe -fverbose-asm
 AR      = ar rcs
-CFLAGS  = -Wall -Werror -Wextra -std=c11
+CFLAGS  = -Wall -Werror -Wextra -std=c18
 LDFLAGS = -lpthread
-OPTFLAGS = -march=native -ffast-math
 
 BINDIR = ../bin
 BINDBGDIR = $(BINDIR)/debug
@@ -47,24 +46,24 @@ LIB  = thread_pool
 LIBDBGSHARED = $(LIBDBGDIR)/lib$(LIB).so
 LIBDBGSTATIC = $(LIBDBGDIR)/lib$(LIB).a
 LIBDBGOBJS = $(addprefix $(OBJLIBDBGDIR)/, $(LIB_OBJS))
-DBGCFLAGS = -Og --coverage
+DBGCFLAGS = -g -Og --coverage
 DBGLDFLAGS = -L$(LIBDBGDIR) -l$(LIB) -lrt -lm
 $(OBJLIBDBGDIR)/%.o: %.c .prep
-	$(CC) -c $(CFLAGS) $(OPTFLAGS) $(DBGCFLAGS) -fPIC -o $@ $< -I$(INCLUDES)
+	$(CC) -c $(CFLAGS) $(DBGCFLAGS) -fPIC -o $@ $< -I$(INCLUDES)
 $(OBJDBGDIR)/%.o: %.c .prep
-	$(CC) -c $(CFLAGS) $(OPTFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES)
+	$(CC) -c $(CFLAGS) $(DBGCFLAGS) -o $@ $< -I$(INCLUDES)
 #
 # Lib Release build settings
 #
 LIBRELSHARED = $(LIBRELDIR)/lib$(LIB).so
 LIBRELSTATIC = $(LIBRELDIR)/lib$(LIB).a
 LIBRELOBJS = $(addprefix $(OBJLIBRELDIR)/, $(LIB_OBJS))
-RELCFLAGS = -Ofast
+RELCFLAGS = -march=native -O2
 RELLDFLAGS = -L$(LIBRELDIR) -l$(LIB) -lrt -lm -lgomp
 $(OBJLIBRELDIR)/%.o: %.c .prep
-	$(CC) -c $(CFLAGS) $(OPTFLAGS) $(RELCFLAGS) -fPIC -o $@ $< -I$(INCLUDES) 
+	$(CC) -c $(CFLAGS) $(RELCFLAGS) -fPIC -o $@ $< -I$(INCLUDES) 
 $(OBJRELDIR)/%.o: %.c .prep
-	$(CC) -c $(CFLAGS) $(OPTFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES)
+	$(CC) -c $(CFLAGS) $(RELCFLAGS) -o $@ $< -I$(INCLUDES)
 #
 # Test Debug build settings
 #
@@ -101,7 +100,7 @@ all: debug release testdebug testrelease regdebug regrelease
 debug: $(LIBDBGSHARED) $(LIBDBGSTATIC)
 
 $(LIBDBGSHARED): $(LIBDBGOBJS)
-	$(CC) $(CFLAGS) $(OPTFLAGS) $(DBGCFLAGS) -shared -o $(LIBDBGSHARED) $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) $(DBGCFLAGS) -shared -o $(LIBDBGSHARED) $^ $(LDFLAGS)
 
 $(LIBDBGSTATIC): $(LIBDBGOBJS)
 	$(AR) -o $(LIBDBGSTATIC) $(LIBDBGOBJS)
@@ -109,7 +108,7 @@ $(LIBDBGSTATIC): $(LIBDBGOBJS)
 release: $(LIBRELSHARED) $(LIBRELSTATIC)
 
 $(LIBRELSHARED): $(LIBRELOBJS)
-	$(CC) $(CFLAGS) $(OPTFLAGS) $(RELCFLAGS) -shared -o $(LIBRELSHARED) $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) $(RELCFLAGS) -shared -o $(LIBRELSHARED) $^ $(LDFLAGS)
 
 $(LIBRELSTATIC): $(LIBRELOBJS)
 	$(AR) -o $(LIBRELSTATIC) $(LIBRELOBJS)

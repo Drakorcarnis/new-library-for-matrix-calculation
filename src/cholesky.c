@@ -95,6 +95,7 @@ matrix_t * matrix_solve_cholesky_f(const matrix_t *A, const matrix_t *B)
     for (int i=0; i < n; i++){
         comp_B[i] = __builtin_assume_aligned(comp_B[i], ALIGN);
         B->coeff[i] = __builtin_assume_aligned(B->coeff[i], ALIGN);
+        #pragma GCC ivdep
         for (int j=0; j < m; j++){
             comp_B[i][j] = (COMPLEX_TYPE)B->coeff[i][j];
         }
@@ -140,6 +141,7 @@ matrix_t * matrix_solve_cholesky_f(const matrix_t *A, const matrix_t *B)
         for (int i=0; i < n; i++){
             ret->coeff[i] = __builtin_assume_aligned(ret->coeff[i], ALIGN);
             X[i] = __builtin_assume_aligned(X[i], ALIGN);
+            #pragma GCC ivdep
             for (int j=0; j < m; j++){
                 ret->coeff[i][j] = creal(X[i][j]);
             }

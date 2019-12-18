@@ -89,6 +89,7 @@ matrix_t * matrix_copy(const matrix_t *matrix)
         for (size_t i = 0; i < matrix->rows; i++) {
             copy->coeff[i] = __builtin_assume_aligned(copy->coeff[i], ALIGN);
             matrix->coeff[i] = __builtin_assume_aligned(matrix->coeff[i], ALIGN);
+            #pragma GCC ivdep
             for (size_t j = 0; j < matrix->columns; j++) {
                 copy->coeff[i][j] = matrix->coeff[i][j];
             }
@@ -157,6 +158,7 @@ matrix_t * matrix_add_f(const matrix_t *matrix1, const matrix_t *matrix2)
             add_matrix->coeff[i] = __builtin_assume_aligned(add_matrix->coeff[i], ALIGN);
             matrix1->coeff[i] = __builtin_assume_aligned(matrix1->coeff[i], ALIGN);
             matrix2->coeff[i] = __builtin_assume_aligned(matrix2->coeff[i], ALIGN);
+            #pragma GCC ivdep
             for (size_t j = 0; j < add_matrix->columns; j++) {
                 add_matrix->coeff[i][j] = matrix1->coeff[i][j] + matrix2->coeff[i][j];
             }
@@ -173,6 +175,7 @@ matrix_t * matrix_mult_scalar_f(const matrix_t *matrix, TYPE lambda)
         for (size_t i = 0; i < matrix->rows; i++) {
             mult_matrix->coeff[i] = __builtin_assume_aligned(mult_matrix->coeff[i], ALIGN);
             matrix->coeff[i] = __builtin_assume_aligned(matrix->coeff[i], ALIGN);
+            #pragma GCC ivdep
             for (size_t j = 0; j < matrix->columns; j++) {
                 mult_matrix->coeff[i][j]=lambda * matrix->coeff[i][j];
             }
